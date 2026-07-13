@@ -187,6 +187,16 @@
   .entry-form input:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
   .form-actions { display: flex; gap: 8px; }
 
+  .qty-wrap { display: flex; gap: 6px; align-items: stretch; }
+  .qty-wrap input {
+    flex: 1; min-width: 0; text-align: center;
+    font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield; appearance: textfield;
+  }
+  .qty-wrap input::-webkit-outer-spin-button,
+  .qty-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .qty-btn { padding: 5px 12px; font-weight: 700; line-height: 1; }
+
   .section-label {
     margin: 18px 0 6px; font-size: 11px; letter-spacing: .04em;
     text-transform: uppercase; color: var(--text-muted);
@@ -237,8 +247,9 @@ const ISLANDS = [
         item: "Gift: Vlaude for Ruksa",
         start: "2026-07-12",
         end: "2026-07-12",
-        amount: -22,
-        note: "Gifted Ruksa vlaude — $22",
+        amount: -3300,
+        qty: 1,
+        note: "Gifted Ruksa vlaude — $22 ≈ ¥3,300",
       },
     ],
   },
@@ -267,7 +278,9 @@ const svgNS = "http://www.w3.org/2000/svg";
 const DAY = 24 * 60 * 60 * 1000;
 
 /* Persistence: edits survive reloads; the entries above only seed first use. */
-const STORAGE_KEY = "life-islands-entries-v1";
+const STORAGE_KEY = "life-islands-entries-v2";  // v2: amounts in yen, entries carry qty
+const LEGACY_KEY = "life-islands-entries-v1";   // v1: amounts in dollars, no qty
+const USD_TO_JPY = 150;                          // rate used to migrate v1 entries
 
 function persist() {
   try {
@@ -278,7 +291,22 @@ function persist() {
 
 (function restore() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    let saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!saved) {
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY));
+      if (legacy) {
+        saved = {};
+        for (const [id, entries] of Object.entries(legacy)) {
+          saved[id] = entries.map((e) => ({
+            ...e,
+            amount: Math.round((e.amount || 0) * USD_TO_JPY),
+            qty: e.qty || 1,
+          }));
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+        localStorage.removeItem(LEGACY_KEY);
+      }
+    }
     if (!saved) return;
     for (const isl of ISLANDS) {
       if (Array.isArray(saved[isl.id])) isl.entries = saved[isl.id];
@@ -299,7 +327,9 @@ function parseDate(s) {
 }
 
 const money = (v) =>
-  (v < 0 ? "−" : "") + "$" + Math.abs(v).toFixed(2);
+  (v < 0 ? "−" : "") + "¥" + Math.round(Math.abs(v)).toLocaleString("en-US");
+
+const entryTotal = (e) => (e.amount || 0) * (e.qty || 1);
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -436,7 +466,7 @@ function renderPanel(isl) {
 
   const acct = document.createElement("div");
   acct.className = "account-line";
-  const net = isl.entries.reduce((s, e) => s + (e.amount || 0), 0);
+  const net = isl.entries.reduce((s, e) => s + entryTotal(e), 0);
   acct.innerHTML =
     `<span><span class="label">Account balance</span><br><span class="value">${money(net)}</span></span>` +
     `<span><span class="label">Entries</span><br><span class="value">${isl.entries.length}</span></span>`;
@@ -467,14 +497,15 @@ function renderPanel(isl) {
 function renderLedger(isl) {
   const t = document.createElement("table");
   t.className = "ledger";
-  t.innerHTML = '<thead><tr><th>Date</th><th>Item</th><th>Amount</th><th></th></tr></thead>';
+  t.innerHTML = '<thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Amount</th><th></th></tr></thead>';
   const tb = document.createElement("tbody");
   isl.entries.forEach((e, i) => {
     const tr = document.createElement("tr");
     tr.innerHTML =
       `<td>${esc(e.start === e.end ? e.start : e.start + " → " + e.end)}</td>` +
       `<td>${esc(e.item)}${e.note ? `<div class="note">${esc(e.note)}</div>` : ""}</td>` +
-      `<td>${money(e.amount)}</td>` +
+      `<td>${e.qty || 1}</td>` +
+      `<td>${money(entryTotal(e))}${(e.qty || 1) > 1 ? `<div class="note">${e.qty} × ${money(e.amount)}</div>` : ""}</td>` +
       `<td class="row-actions"></td>`;
     const actions = tr.lastElementChild;
     const edit = document.createElement("button");
@@ -510,8 +541,15 @@ function openForm(isl, index) {
       </label>
       <label>Start date<input name="start" type="date" required></label>
       <label>End date<input name="end" type="date"></label>
-      <label>Amount ($)<input name="amount" type="number" step="0.01" placeholder="-22 = money out"></label>
-      <label>Note<input name="note" maxlength="140" placeholder="optional"></label>
+      <label>Amount (¥ per unit)<input name="amount" type="number" step="1" placeholder="-3300 = money out"></label>
+      <label>Quantity
+        <span class="qty-wrap">
+          <button type="button" class="btn qty-btn" data-qty="-1" aria-label="Decrease quantity">−</button>
+          <input name="qty" type="number" min="1" step="1" value="1">
+          <button type="button" class="btn qty-btn" data-qty="1" aria-label="Increase quantity">+</button>
+        </span>
+      </label>
+      <label class="wide">Note<input name="note" maxlength="140" placeholder="optional"></label>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">${existing ? "Save changes" : "Add entry"}</button>
         <button type="button" class="btn btn-ghost" data-cancel>Cancel</button>
@@ -523,10 +561,15 @@ function openForm(isl, index) {
     form.start.value = existing.start;
     form.end.value = existing.end;
     form.amount.value = existing.amount;
+    form.qty.value = existing.qty || 1;
     form.note.value = existing.note || "";
   } else {
     form.start.value = todayISO();
   }
+  form.querySelectorAll("[data-qty]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      form.qty.value = Math.max(1, (parseInt(form.qty.value, 10) || 1) + Number(btn.dataset.qty));
+    }));
   form.querySelector("[data-cancel]").addEventListener("click", () => { slot.innerHTML = ""; });
   form.addEventListener("submit", (ev) => {
     ev.preventDefault();
@@ -537,7 +580,8 @@ function openForm(isl, index) {
       item: form.item.value.trim(),
       start,
       end,
-      amount: parseFloat(form.amount.value) || 0,
+      amount: Math.round(parseFloat(form.amount.value) || 0),
+      qty: Math.max(1, parseInt(form.qty.value, 10) || 1),
       note: form.note.value.trim(),
     };
     if (!entry.item || !entry.start) return;
@@ -628,7 +672,7 @@ function renderGantt(entries) {
       x: 10, y: yMid + 13, "font-size": 11, fill: "var(--text-secondary)",
       style: "font-variant-numeric: tabular-nums",
     }, svg);
-    amt.textContent = `${money(e.amount)} · ${e.start === e.end ? e.start : e.start + " → " + e.end}`;
+    amt.textContent = `${money(entryTotal(e))}${(e.qty || 1) > 1 ? ` (×${e.qty})` : ""} · ${e.start === e.end ? e.start : e.start + " → " + e.end}`;
 
     const s = parseDate(e.start).getTime();
     const en = parseDate(e.end).getTime() + DAY;   // inclusive end date
@@ -660,7 +704,9 @@ function attachTooltip(hit, bar, e) {
     tooltip.innerHTML =
       `<div class="t-title">${esc(e.item)}</div>` +
       `<div class="t-sub">${esc(e.start === e.end ? e.start : e.start + " → " + e.end)}</div>` +
-      `<div>Amount: <strong>${money(e.amount)}</strong></div>` +
+      ((e.qty || 1) > 1
+        ? `<div>Amount: ${e.qty} × ${money(e.amount)} = <strong>${money(entryTotal(e))}</strong></div>`
+        : `<div>Amount: <strong>${money(entryTotal(e))}</strong></div>`) +
       (e.note ? `<div class="t-sub">${esc(e.note)}</div>` : "");
     tooltip.style.opacity = 1;
     move(ev);

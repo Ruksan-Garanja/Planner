@@ -27,20 +27,28 @@ python3 -m http.server 8000
 
 Use the **+ Add entry** button in an island's panel to add an item, and the
 **Edit** / **Delete** buttons on each row of the entries table to change or
-remove one. Edits are saved to the browser's localStorage, so they survive
-reloads; clearing site data restores the seed entries.
+remove one. The quantity stepper's − / + buttons multiply the per-unit amount:
+an entry's total is `amount × qty`, and balances, the Gantt labels, and
+tooltips all show the total. Edits are saved to the browser's localStorage,
+so they survive reloads; clearing site data restores the seed entries.
+
+Amounts are in **yen (¥)**. Entries saved by the older dollar version are
+migrated automatically at the fixed rate defined by `USD_TO_JPY` in
+`index.html` (¥150 per $1).
 
 The seed entries live in the `ISLANDS` array near the top of the `<script>`
 block in `index.html`. Each entry has an `item` name, `start`/`end` dates
-(`YYYY-MM-DD`), an `amount` (negative for spending), and an optional `note`:
+(`YYYY-MM-DD`), a per-unit `amount` in yen (negative for spending), a `qty`,
+and an optional `note`:
 
 ```js
 {
   item: "Gift: Vlaude for Ruksa",
   start: "2026-07-12",
   end: "2026-07-12",
-  amount: -22,
-  note: "Gifted Ruksa vlaude — $22",
+  amount: -3300,
+  qty: 1,
+  note: "Gifted Ruksa vlaude — $22 ≈ ¥3,300",
 }
 ```
 
