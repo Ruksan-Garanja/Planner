@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Life Islands</title>
+<style>
+  :root {
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --series-1: #2a78d6;
+    --water-1: #bcd9ee;
+    --water-2: #a5cbe8;
+    --sand: #eddcae;
+    --sand-edge: #d9c48a;
+    --grass: #9ec98a;
+    --grass-edge: #7fb46c;
+    --route: #7d95a8;
+    --node-fill: #fcfcfb;
+    --today: #e34948;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-1: #1a1a19;
+      --page: #0d0d0d;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --series-1: #3987e5;
+      --water-1: #17293a;
+      --water-2: #122130;
+      --sand: #8a7845;
+      --sand-edge: #6d5e33;
+      --grass: #4b7a3c;
+      --grass-edge: #3c6430;
+      --route: #5c7488;
+      --node-fill: #1a1a19;
+      --today: #e66767;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header {
+    padding: 20px 28px 4px;
+  }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; color: var(--text-secondary); font-size: 13px; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(340px, 1.1fr) minmax(360px, 1fr);
+    gap: 20px;
+    padding: 20px 28px 28px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .map-card, .panel {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .map-card svg { display: block; width: 100%; height: auto; }
+
+  .island { cursor: pointer; }
+  .island .halo { opacity: 0; transition: opacity .15s; }
+  .island:hover .halo, .island.selected .halo { opacity: 1; }
+  .island text { pointer-events: none; }
+
+  .panel { padding: 18px 20px 22px; min-height: 320px; }
+  .panel h2 { margin: 0 0 2px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  .panel .blurb { margin: 0 0 14px; color: var(--text-secondary); font-size: 13px; }
+  .account-line {
+    display: flex; gap: 16px; align-items: baseline;
+    padding: 10px 12px; margin-bottom: 16px;
+    border: 1px solid var(--border); border-radius: 8px;
+  }
+  .account-line .label { color: var(--text-muted); font-size: 12px; }
+  .account-line .value { font-size: 20px; font-weight: 600; }
+
+  .gantt-wrap { overflow-x: auto; }
+  .gantt-wrap svg { display: block; }
+
+  .empty {
+    color: var(--text-muted); font-size: 13px;
+    padding: 24px 0; text-align: center;
+  }
+
+  table.ledger { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.ledger th {
+    text-align: left; color: var(--text-muted); font-weight: 500;
+    border-bottom: 1px solid var(--baseline); padding: 6px 8px;
+  }
+  table.ledger td {
+    padding: 8px; border-bottom: 1px solid var(--grid);
+    font-variant-numeric: tabular-nums;
+  }
+
+  #tooltip {
+    position: fixed; pointer-events: none; z-index: 10;
+    background: var(--surface-1); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; line-height: 1.5;
+    box-shadow: 0 4px 14px rgba(0,0,0,.18);
+    opacity: 0; transition: opacity .1s;
+    max-width: 240px;
+  }
+  #tooltip .t-title { font-weight: 600; }
+  #tooltip .t-sub { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Life Islands</h1>
+  <p>A top-down archipelago of your life. Each island keeps its own account — click one to open it.</p>
+</header>
+
+<div class="layout">
+  <div class="map-card">
+    <svg id="map" viewBox="0 0 1000 640" role="img" aria-label="Top-down map of three life islands connected by a central node"></svg>
+  </div>
+  <aside class="panel" id="panel"></aside>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+/* ---------------- Data: each island keeps an account ---------------- */
+
+const ISLANDS = [
+  {
+    id: "financial",
+    name: "Financial Island",
+    icon: "\u{1F4B0}",
+    blurb: "Money in, money out. Entries plot on a Gantt timeline — dates across, items down.",
+    view: "gantt",
+    cx: 235, cy: 200, r: 105, seed: 7,
+    entries: [
+      {
+        item: "Gift: Vlaude for Ruksa",
+        start: "2026-07-12",
+        end: "2026-07-12",
+        amount: -22,
+        note: "Gifted Ruksa vlaude — $22",
+      },
+    ],
+  },
+  {
+    id: "health",
+    name: "Health Island",
+    icon: "\u{1F33F}",
+    blurb: "Body and mind. Workouts, sleep, checkups — log them here.",
+    view: "ledger",
+    cx: 762, cy: 235, r: 95, seed: 21,
+    entries: [],
+  },
+  {
+    id: "career",
+    name: "Career Island",
+    icon: "\u{1F3D4}",
+    blurb: "Work, skills, and projects. Every milestone gets an entry.",
+    view: "ledger",
+    cx: 500, cy: 500, r: 100, seed: 42,
+    entries: [],
+  },
+];
+
+const HUB = { x: 495, y: 300 };            // the node that connects the islands
+const svgNS = "http://www.w3.org/2000/svg";
+const DAY = 24 * 60 * 60 * 1000;
+
+function el(name, attrs = {}, parent) {
+  const n = document.createElementNS(svgNS, name);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+
+function parseDate(s) {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+const money = (v) =>
+  (v < 0 ? "−" : "") + "$" + Math.abs(v).toFixed(2);
+
+/* ---------------- Top-down island map ---------------- */
+
+// Deterministic pseudo-random, so island blobs are stable per seed.
+function rng(seed) {
+  let s = seed;
+  return () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+// Organic closed blob around (cx, cy) — reads as a landmass from above.
+function blobPath(cx, cy, r, seed, wobble = 0.22) {
+  const rand = rng(seed);
+  const pts = [];
+  const n = 10;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const rr = r * (1 - wobble / 2 + rand() * wobble);
+    pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.82]);
+  }
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < n; i++) {
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    const mx = (p1[0] + p2[0]) / 2;
+    const my = (p1[1] + p2[1]) / 2;
+    d += ` Q ${p1[0]} ${p1[1]} ${mx} ${my}`;
+  }
+  return d + " Z";
+}
+
+function drawMap() {
+  const svg = document.getElementById("map");
+
+  // Water
+  el("rect", { x: 0, y: 0, width: 1000, height: 640, fill: "var(--water-1)" }, svg);
+  const ripples = rng(3);
+  for (let i = 0; i < 26; i++) {
+    const x = 30 + ripples() * 940;
+    const y = 24 + ripples() * 592;
+    el("path", {
+      d: `M ${x} ${y} q 9 -5 18 0 q 9 5 18 0`,
+      stroke: "var(--water-2)", "stroke-width": 2.4,
+      fill: "none", "stroke-linecap": "round", opacity: 0.8,
+    }, svg);
+  }
+
+  // Routes island → hub node (drawn beneath land)
+  for (const isl of ISLANDS) {
+    el("line", {
+      x1: isl.cx, y1: isl.cy, x2: HUB.x, y2: HUB.y,
+      stroke: "var(--route)", "stroke-width": 2.5,
+      "stroke-dasharray": "2 9", "stroke-linecap": "round",
+    }, svg);
+  }
+
+  // Islands
+  for (const isl of ISLANDS) {
+    const g = el("g", { class: "island", id: `island-${isl.id}`, tabindex: 0, role: "button" }, svg);
+    el("path", {
+      class: "halo",
+      d: blobPath(isl.cx, isl.cy, isl.r + 14, isl.seed, 0.18),
+      fill: "none", stroke: "var(--series-1)", "stroke-width": 3,
+      "stroke-dasharray": "6 6",
+    }, g);
+    el("path", { d: blobPath(isl.cx, isl.cy, isl.r, isl.seed), fill: "var(--sand)", stroke: "var(--sand-edge)", "stroke-width": 2 }, g);
+    el("path", { d: blobPath(isl.cx, isl.cy, isl.r * 0.62, isl.seed + 5), fill: "var(--grass)", stroke: "var(--grass-edge)", "stroke-width": 1.5 }, g);
+    const icon = el("text", {
+      x: isl.cx, y: isl.cy + 2, "text-anchor": "middle",
+      "font-size": 34, "dominant-baseline": "middle",
+    }, g);
+    icon.textContent = isl.icon;
+    const label = el("text", {
+      x: isl.cx, y: isl.cy + isl.r * 0.82 + 26, "text-anchor": "middle",
+      "font-size": 15, "font-weight": 600, fill: "var(--text-primary)",
+      stroke: "var(--surface-1)", "stroke-width": 4, "paint-order": "stroke",
+    }, g);
+    label.textContent = isl.name;
+
+    g.addEventListener("click", () => selectIsland(isl.id));
+    g.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectIsland(isl.id); }
+    });
+  }
+
+  // Hub node on top of the routes
+  el("circle", { cx: HUB.x, cy: HUB.y, r: 13, fill: "var(--node-fill)", stroke: "var(--route)", "stroke-width": 3 }, svg);
+  el("circle", { cx: HUB.x, cy: HUB.y, r: 4.5, fill: "var(--route)" }, svg);
+  const hubLabel = el("text", {
+    x: HUB.x, y: HUB.y - 22, "text-anchor": "middle",
+    "font-size": 12, fill: "var(--text-secondary)",
+    stroke: "var(--surface-1)", "stroke-width": 4, "paint-order": "stroke",
+  }, svg);
+  hubLabel.textContent = "hub node";
+}
+
+/* ---------------- Island panel ---------------- */
+
+function selectIsland(id) {
+  document.querySelectorAll(".island").forEach((g) =>
+    g.classList.toggle("selected", g.id === `island-${id}`));
+  renderPanel(ISLANDS.find((i) => i.id === id));
+}
+
+function renderPanel(isl) {
+  const panel = document.getElementById("panel");
+  panel.innerHTML = "";
+
+  const h = document.createElement("h2");
+  h.textContent = `${isl.icon} ${isl.name}`;
+  panel.appendChild(h);
+
+  const blurb = document.createElement("p");
+  blurb.className = "blurb";
+  blurb.textContent = isl.blurb;
+  panel.appendChild(blurb);
+
+  const acct = document.createElement("div");
+  acct.className = "account-line";
+  const net = isl.entries.reduce((s, e) => s + (e.amount || 0), 0);
+  acct.innerHTML =
+    `<span><span class="label">Account balance</span><br><span class="value">${money(net)}</span></span>` +
+    `<span><span class="label">Entries</span><br><span class="value">${isl.entries.length}</span></span>`;
+  panel.appendChild(acct);
+
+  if (isl.entries.length === 0) {
+    const e = document.createElement("div");
+    e.className = "empty";
+    e.textContent = "No entries yet — this island’s account is waiting for its first item.";
+    panel.appendChild(e);
+  } else if (isl.view === "gantt") {
+    panel.appendChild(renderGantt(isl.entries));
+  } else {
+    panel.appendChild(renderLedger(isl.entries));
+  }
+}
+
+function renderLedger(entries) {
+  const t = document.createElement("table");
+  t.className = "ledger";
+  t.innerHTML = "<thead><tr><th>Date</th><th>Item</th><th>Amount</th></tr></thead>";
+  const tb = document.createElement("tbody");
+  for (const e of entries) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${e.start}</td><td>${e.item}</td><td>${money(e.amount)}</td>`;
+    tb.appendChild(tr);
+  }
+  t.appendChild(tb);
+  return t;
+}
+
+/* ---------------- Gantt chart (dates →, items ↓) ---------------- */
+
+function renderGantt(entries) {
+  const wrap = document.createElement("div");
+  wrap.className = "gantt-wrap";
+
+  // Time window: entry range padded, at least 12 days.
+  let min = Math.min(...entries.map((e) => parseDate(e.start).getTime()));
+  let max = Math.max(...entries.map((e) => parseDate(e.end).getTime()));
+  min -= 4 * DAY;
+  max += 4 * DAY;
+  while ((max - min) / DAY < 11) max += DAY;
+  const days = Math.round((max - min) / DAY) + 1;
+
+  const labelW = 170;
+  const colW = 34;
+  const rowH = 40;
+  const headerH = 46;
+  const width = labelW + days * colW + 12;
+  const height = headerH + entries.length * rowH + 14;
+
+  const svg = el("svg", {
+    viewBox: `0 0 ${width} ${height}`,
+    width, height,
+    role: "img", "aria-label": "Gantt chart of financial account items over dates",
+  });
+  const x0 = labelW;
+  const xFor = (t) => x0 + ((t - min) / DAY) * colW;
+
+  const monthFmt = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
+
+  // Day grid + axis labels
+  for (let i = 0; i < days; i++) {
+    const d = new Date(min + i * DAY);
+    const x = x0 + i * colW;
+    const dow = d.getUTCDay();
+    if (dow === 0 || dow === 6) {
+      el("rect", { x, y: headerH, width: colW, height: height - headerH - 14, fill: "var(--grid)", opacity: 0.45 }, svg);
+    }
+    el("line", { x1: x, y1: headerH, x2: x, y2: height - 14, stroke: "var(--grid)", "stroke-width": 1 }, svg);
+    const dayLabel = el("text", {
+      x: x + colW / 2, y: headerH - 8, "text-anchor": "middle",
+      "font-size": 11, fill: "var(--text-muted)",
+      style: "font-variant-numeric: tabular-nums",
+    }, svg);
+    dayLabel.textContent = d.getUTCDate();
+    if (i === 0 || d.getUTCDate() === 1) {
+      const m = el("text", { x: x + 2, y: 16, "font-size": 12, "font-weight": 600, fill: "var(--text-secondary)" }, svg);
+      m.textContent = `${monthFmt.format(d)} ${d.getUTCFullYear()}`;
+    }
+  }
+  el("line", { x1: x0, y1: headerH, x2: width - 12, y2: headerH, stroke: "var(--baseline)", "stroke-width": 1 }, svg);
+
+  // Today marker
+  const now = new Date();
+  const todayT = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  if (todayT >= min && todayT <= max + DAY) {
+    const tx = xFor(todayT) + colW / 2;
+    el("line", { x1: tx, y1: headerH, x2: tx, y2: height - 14, stroke: "var(--today)", "stroke-width": 1.5, "stroke-dasharray": "4 4" }, svg);
+    const tl = el("text", { x: tx, y: 18, "text-anchor": "middle", "font-size": 10, fill: "var(--today)" }, svg);
+    tl.textContent = "today";
+  }
+
+  // Rows: item name left, bar on the timeline
+  entries.forEach((e, i) => {
+    const yTop = headerH + i * rowH;
+    const yMid = yTop + rowH / 2;
+
+    el("line", { x1: 8, y1: yTop + rowH, x2: width - 12, y2: yTop + rowH, stroke: "var(--grid)", "stroke-width": 1 }, svg);
+
+    const name = el("text", {
+      x: 10, y: yMid - 2, "font-size": 12.5, "font-weight": 600, fill: "var(--text-primary)",
+    }, svg);
+    name.textContent = e.item;
+    const amt = el("text", {
+      x: 10, y: yMid + 13, "font-size": 11, fill: "var(--text-secondary)",
+      style: "font-variant-numeric: tabular-nums",
+    }, svg);
+    amt.textContent = `${money(e.amount)} · ${e.start === e.end ? e.start : e.start + " → " + e.end}`;
+
+    const s = parseDate(e.start).getTime();
+    const en = parseDate(e.end).getTime() + DAY;   // inclusive end date
+    const bx = xFor(s) + 2;
+    const bw = Math.max(xFor(en) - xFor(s) - 4, colW - 4);
+
+    const bar = el("rect", {
+      x: bx, y: yMid - 8, width: bw, height: 16, rx: 4,
+      fill: "var(--series-1)",
+    }, svg);
+    // Bigger invisible hit target for hover
+    const hit = el("rect", {
+      x: bx - 6, y: yTop + 2, width: bw + 12, height: rowH - 4,
+      fill: "transparent", style: "cursor: default",
+    }, svg);
+    attachTooltip(hit, bar, e);
+  });
+
+  wrap.appendChild(svg);
+  return wrap;
+}
+
+/* ---------------- Tooltip ---------------- */
+
+const tooltip = document.getElementById("tooltip");
+
+function attachTooltip(hit, bar, e) {
+  const show = (ev) => {
+    tooltip.innerHTML =
+      `<div class="t-title">${e.item}</div>` +
+      `<div class="t-sub">${e.start === e.end ? e.start : e.start + " → " + e.end}</div>` +
+      `<div>Amount: <strong>${money(e.amount)}</strong></div>` +
+      (e.note ? `<div class="t-sub">${e.note}</div>` : "");
+    tooltip.style.opacity = 1;
+    move(ev);
+    bar.setAttribute("stroke", "var(--surface-1)");
+    bar.setAttribute("stroke-width", 2);
+  };
+  const move = (ev) => {
+    const pad = 14;
+    let x = ev.clientX + pad, y = ev.clientY + pad;
+    const r = tooltip.getBoundingClientRect();
+    if (x + r.width > window.innerWidth - 8) x = ev.clientX - r.width - pad;
+    if (y + r.height > window.innerHeight - 8) y = ev.clientY - r.height - pad;
+    tooltip.style.left = x + "px";
+    tooltip.style.top = y + "px";
+  };
+  const hide = () => {
+    tooltip.style.opacity = 0;
+    bar.removeAttribute("stroke");
+    bar.removeAttribute("stroke-width");
+  };
+  hit.addEventListener("mouseenter", show);
+  hit.addEventListener("mousemove", move);
+  hit.addEventListener("mouseleave", hide);
+}
+
+/* ---------------- Boot ---------------- */
+
+drawMap();
+selectIsland("financial");
+</script>
+</body>
+</html>
