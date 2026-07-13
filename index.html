@@ -47,6 +47,46 @@
       --today: #e66767;
     }
   }
+  :root[data-theme="dark"] {
+    --surface-1: #1a1a19;
+    --page: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5;
+    --water-1: #17293a;
+    --water-2: #122130;
+    --sand: #8a7845;
+    --sand-edge: #6d5e33;
+    --grass: #4b7a3c;
+    --grass-edge: #3c6430;
+    --route: #5c7488;
+    --node-fill: #1a1a19;
+    --today: #e66767;
+  }
+  :root[data-theme="light"] {
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --series-1: #2a78d6;
+    --water-1: #bcd9ee;
+    --water-2: #a5cbe8;
+    --sand: #eddcae;
+    --sand-edge: #d9c48a;
+    --grass: #9ec98a;
+    --grass-edge: #7fb46c;
+    --route: #7d95a8;
+    --node-fill: #fcfcfb;
+    --today: #e34948;
+  }
 
   * { box-sizing: border-box; }
   body {
@@ -86,7 +126,8 @@
   .island text { pointer-events: none; }
 
   .panel { padding: 18px 20px 22px; min-height: 320px; }
-  .panel h2 { margin: 0 0 2px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
+  .panel h2 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
   .panel .blurb { margin: 0 0 14px; color: var(--text-secondary); font-size: 13px; }
   .account-line {
     display: flex; gap: 16px; align-items: baseline;
@@ -112,6 +153,43 @@
   table.ledger td {
     padding: 8px; border-bottom: 1px solid var(--grid);
     font-variant-numeric: tabular-nums;
+  }
+  table.ledger .note { color: var(--text-muted); font-size: 11.5px; font-variant-numeric: normal; }
+  .row-actions { white-space: nowrap; text-align: right; }
+
+  .btn {
+    font: inherit; font-size: 12.5px; border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-primary); padding: 5px 10px; cursor: pointer;
+  }
+  .btn:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
+  .btn-primary { background: var(--series-1); border-color: var(--series-1); color: #fff; font-weight: 600; }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-ghost { color: var(--text-secondary); border-color: transparent; }
+  .btn-ghost:hover { background: var(--grid); }
+  .btn-danger { color: var(--today); }
+
+  .entry-form {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px;
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; margin-bottom: 16px;
+  }
+  .entry-form label {
+    font-size: 11px; color: var(--text-muted);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .entry-form label.wide, .entry-form .form-actions { grid-column: 1 / -1; }
+  .entry-form input {
+    font: inherit; font-size: 13px; padding: 6px 8px;
+    border: 1px solid var(--baseline); border-radius: 6px;
+    background: var(--page); color: var(--text-primary);
+  }
+  .entry-form input:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
+  .form-actions { display: flex; gap: 8px; }
+
+  .section-label {
+    margin: 18px 0 6px; font-size: 11px; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-muted);
   }
 
   #tooltip {
@@ -188,6 +266,26 @@ const HUB = { x: 495, y: 300 };            // the node that connects the islands
 const svgNS = "http://www.w3.org/2000/svg";
 const DAY = 24 * 60 * 60 * 1000;
 
+/* Persistence: edits survive reloads; the entries above only seed first use. */
+const STORAGE_KEY = "life-islands-entries-v1";
+
+function persist() {
+  try {
+    const data = Object.fromEntries(ISLANDS.map((i) => [i.id, i.entries]));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch { /* storage unavailable — session-only edits */ }
+}
+
+(function restore() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!saved) return;
+    for (const isl of ISLANDS) {
+      if (Array.isArray(saved[isl.id])) isl.entries = saved[isl.id];
+    }
+  } catch { /* corrupt or unavailable storage — keep seeds */ }
+})();
+
 function el(name, attrs = {}, parent) {
   const n = document.createElementNS(svgNS, name);
   for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
@@ -202,6 +300,14 @@ function parseDate(s) {
 
 const money = (v) =>
   (v < 0 ? "−" : "") + "$" + Math.abs(v).toFixed(2);
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const todayISO = () => {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+};
 
 /* ---------------- Top-down island map ---------------- */
 
@@ -312,9 +418,16 @@ function renderPanel(isl) {
   const panel = document.getElementById("panel");
   panel.innerHTML = "";
 
+  const head = document.createElement("div");
+  head.className = "panel-head";
   const h = document.createElement("h2");
   h.textContent = `${isl.icon} ${isl.name}`;
-  panel.appendChild(h);
+  const addBtn = document.createElement("button");
+  addBtn.className = "btn btn-primary";
+  addBtn.textContent = "+ Add entry";
+  addBtn.addEventListener("click", () => openForm(isl, null));
+  head.append(h, addBtn);
+  panel.appendChild(head);
 
   const blurb = document.createElement("p");
   blurb.className = "blurb";
@@ -329,30 +442,112 @@ function renderPanel(isl) {
     `<span><span class="label">Entries</span><br><span class="value">${isl.entries.length}</span></span>`;
   panel.appendChild(acct);
 
+  const formSlot = document.createElement("div");
+  formSlot.id = "form-slot";
+  panel.appendChild(formSlot);
+
   if (isl.entries.length === 0) {
     const e = document.createElement("div");
     e.className = "empty";
-    e.textContent = "No entries yet — this island’s account is waiting for its first item.";
+    e.textContent = "No entries yet — add the first item to this island’s account.";
     panel.appendChild(e);
-  } else if (isl.view === "gantt") {
-    panel.appendChild(renderGantt(isl.entries));
-  } else {
-    panel.appendChild(renderLedger(isl.entries));
+    return;
   }
+
+  if (isl.view === "gantt") {
+    panel.appendChild(renderGantt(isl.entries));
+    const label = document.createElement("div");
+    label.className = "section-label";
+    label.textContent = "Entries";
+    panel.appendChild(label);
+  }
+  panel.appendChild(renderLedger(isl));
 }
 
-function renderLedger(entries) {
+function renderLedger(isl) {
   const t = document.createElement("table");
   t.className = "ledger";
-  t.innerHTML = "<thead><tr><th>Date</th><th>Item</th><th>Amount</th></tr></thead>";
+  t.innerHTML = '<thead><tr><th>Date</th><th>Item</th><th>Amount</th><th></th></tr></thead>';
   const tb = document.createElement("tbody");
-  for (const e of entries) {
+  isl.entries.forEach((e, i) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${e.start}</td><td>${e.item}</td><td>${money(e.amount)}</td>`;
+    tr.innerHTML =
+      `<td>${esc(e.start === e.end ? e.start : e.start + " → " + e.end)}</td>` +
+      `<td>${esc(e.item)}${e.note ? `<div class="note">${esc(e.note)}</div>` : ""}</td>` +
+      `<td>${money(e.amount)}</td>` +
+      `<td class="row-actions"></td>`;
+    const actions = tr.lastElementChild;
+    const edit = document.createElement("button");
+    edit.className = "btn btn-ghost";
+    edit.textContent = "Edit";
+    edit.addEventListener("click", () => openForm(isl, i));
+    const del = document.createElement("button");
+    del.className = "btn btn-ghost btn-danger";
+    del.textContent = "Delete";
+    del.addEventListener("click", () => {
+      if (confirm(`Delete "${e.item}"?`)) {
+        isl.entries.splice(i, 1);
+        persist();
+        renderPanel(isl);
+      }
+    });
+    actions.append(edit, del);
     tb.appendChild(tr);
-  }
+  });
   t.appendChild(tb);
   return t;
+}
+
+/* ---------------- Add / edit entry form ---------------- */
+
+function openForm(isl, index) {
+  const slot = document.getElementById("form-slot");
+  const existing = index != null ? isl.entries[index] : null;
+  slot.innerHTML = `
+    <form class="entry-form">
+      <label class="wide">Item
+        <input name="item" required maxlength="80" placeholder="e.g. Gift: Vlaude for Ruksa">
+      </label>
+      <label>Start date<input name="start" type="date" required></label>
+      <label>End date<input name="end" type="date"></label>
+      <label>Amount ($)<input name="amount" type="number" step="0.01" placeholder="-22 = money out"></label>
+      <label>Note<input name="note" maxlength="140" placeholder="optional"></label>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">${existing ? "Save changes" : "Add entry"}</button>
+        <button type="button" class="btn btn-ghost" data-cancel>Cancel</button>
+      </div>
+    </form>`;
+  const form = slot.firstElementChild;
+  if (existing) {
+    form.item.value = existing.item;
+    form.start.value = existing.start;
+    form.end.value = existing.end;
+    form.amount.value = existing.amount;
+    form.note.value = existing.note || "";
+  } else {
+    form.start.value = todayISO();
+  }
+  form.querySelector("[data-cancel]").addEventListener("click", () => { slot.innerHTML = ""; });
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    let start = form.start.value;
+    let end = form.end.value || start;
+    if (end < start) [start, end] = [end, start];
+    const entry = {
+      item: form.item.value.trim(),
+      start,
+      end,
+      amount: parseFloat(form.amount.value) || 0,
+      note: form.note.value.trim(),
+    };
+    if (!entry.item || !entry.start) return;
+    if (index != null) isl.entries[index] = entry;
+    else isl.entries.push(entry);
+    isl.entries.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+    persist();
+    renderPanel(isl);
+  });
+  form.item.focus();
 }
 
 /* ---------------- Gantt chart (dates →, items ↓) ---------------- */
@@ -463,10 +658,10 @@ const tooltip = document.getElementById("tooltip");
 function attachTooltip(hit, bar, e) {
   const show = (ev) => {
     tooltip.innerHTML =
-      `<div class="t-title">${e.item}</div>` +
-      `<div class="t-sub">${e.start === e.end ? e.start : e.start + " → " + e.end}</div>` +
+      `<div class="t-title">${esc(e.item)}</div>` +
+      `<div class="t-sub">${esc(e.start === e.end ? e.start : e.start + " → " + e.end)}</div>` +
       `<div>Amount: <strong>${money(e.amount)}</strong></div>` +
-      (e.note ? `<div class="t-sub">${e.note}</div>` : "");
+      (e.note ? `<div class="t-sub">${esc(e.note)}</div>` : "");
     tooltip.style.opacity = 1;
     move(ev);
     bar.setAttribute("stroke", "var(--surface-1)");

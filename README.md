@@ -23,10 +23,15 @@ python3 -m http.server 8000
 # then visit http://localhost:8000
 ```
 
-## Adding entries
+## Editing entries
 
-Entries live in the `ISLANDS` array near the top of the `<script>` block in
-`index.html`. Each entry has an `item` name, `start`/`end` dates
+Use the **+ Add entry** button in an island's panel to add an item, and the
+**Edit** / **Delete** buttons on each row of the entries table to change or
+remove one. Edits are saved to the browser's localStorage, so they survive
+reloads; clearing site data restores the seed entries.
+
+The seed entries live in the `ISLANDS` array near the top of the `<script>`
+block in `index.html`. Each entry has an `item` name, `start`/`end` dates
 (`YYYY-MM-DD`), an `amount` (negative for spending), and an optional `note`:
 
 ```js
