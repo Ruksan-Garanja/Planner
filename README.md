@@ -14,9 +14,26 @@ part of life and keeps its own account of entries.
 The three islands are connected through a central **hub node** on the map.
 Click (or focus + Enter) an island to open its account in the side panel.
 
+## Life Timeline
+
+`timeline.html` is a separate page: a single vertical spine showing every
+milestone from birth to today. Set your **birth date** at the top and each
+entry shows the age you were at the time; events group under decade headings
+(`1990s`, `2010s`, …) and are colour-coded by category (Birth & family,
+Education, Career, Personal, Health, Travel, Other). Filter chips narrow the
+spine to one or more categories, and the summary row totals your milestones,
+current age, and first/latest entry.
+
+Use **+ Add milestone** to log an achievement or significant event
+(title, date, category, note); each card has **Edit** / **Delete** on hover.
+Entries save to the browser's localStorage under `life-timeline-v1`, so they
+survive reloads. The seed events are illustrative examples — edit or delete
+them and add your own. Light and dark mode follow the system preference.
+
 ## Running
 
-No build step — open `index.html` in a browser, or serve the folder:
+No build step — open `index.html` (or `timeline.html`) in a browser, or
+serve the folder:
 
 ```sh
 python3 -m http.server 8000

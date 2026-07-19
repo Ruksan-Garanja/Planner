@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Life Timeline</title>
+<style>
+  :root {
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --spine: #c3c2b7;
+    --today: #e34948;
+    /* category accents */
+    --c-birth: #d97b5a;
+    --c-education: #2a78d6;
+    --c-career: #7a5cd6;
+    --c-personal: #d64f8f;
+    --c-health: #3fa579;
+    --c-travel: #d6a02a;
+    --c-other: #7d95a8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-1: #1a1a19;
+      --page: #0d0d0d;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --spine: #383835;
+      --today: #e66767;
+      --c-birth: #e08a68;
+      --c-education: #3987e5;
+      --c-career: #916fe5;
+      --c-personal: #e463a0;
+      --c-health: #4fb589;
+      --c-travel: #e5b13f;
+      --c-other: #8ba3b6;
+    }
+  }
+  :root[data-theme="dark"] {
+    --surface-1: #1a1a19; --page: #0d0d0d; --text-primary: #ffffff;
+    --text-secondary: #c3c2b7; --text-muted: #898781; --grid: #2c2c2a;
+    --baseline: #383835; --border: rgba(255,255,255,0.10); --spine: #383835;
+    --today: #e66767; --c-birth: #e08a68; --c-education: #3987e5;
+    --c-career: #916fe5; --c-personal: #e463a0; --c-health: #4fb589;
+    --c-travel: #e5b13f; --c-other: #8ba3b6;
+  }
+  :root[data-theme="light"] {
+    --surface-1: #fcfcfb; --page: #f9f9f7; --text-primary: #0b0b0b;
+    --text-secondary: #52514e; --text-muted: #898781; --grid: #e1e0d9;
+    --baseline: #c3c2b7; --border: rgba(11,11,11,0.10); --spine: #c3c2b7;
+    --today: #e34948; --c-birth: #d97b5a; --c-education: #2a78d6;
+    --c-career: #7a5cd6; --c-personal: #d64f8f; --c-health: #3fa579;
+    --c-travel: #d6a02a; --c-other: #7d95a8;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header { padding: 24px 28px 8px; max-width: 960px; margin: 0 auto; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 6px 0 0; color: var(--text-secondary); font-size: 13.5px; }
+
+  .toolbar {
+    max-width: 960px; margin: 0 auto; padding: 4px 28px 0;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  }
+  .toolbar .spacer { flex: 1; }
+
+  .birth-line {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--text-secondary);
+  }
+  .birth-line input {
+    font: inherit; font-size: 13px; padding: 5px 8px;
+    border: 1px solid var(--baseline); border-radius: 6px;
+    background: var(--surface-1); color: var(--text-primary);
+  }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
+    border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface-1); color: var(--text-secondary);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+  .chip.active { color: var(--text-primary); border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, var(--surface-1)); }
+
+  .btn {
+    font: inherit; font-size: 12.5px; border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-primary); padding: 6px 12px; cursor: pointer;
+  }
+  .btn:focus-visible { outline: 2px solid var(--c-education); outline-offset: 1px; }
+  .btn-primary { background: var(--c-education); border-color: var(--c-education); color: #fff; font-weight: 600; }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-ghost { color: var(--text-secondary); border-color: transparent; }
+  .btn-ghost:hover { background: var(--grid); }
+  .btn-danger { color: var(--today); }
+
+  /* Summary stats */
+  .summary {
+    max-width: 960px; margin: 16px auto 0; padding: 0 28px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px;
+  }
+  .stat {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .stat .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .stat .value { font-size: 20px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+  /* Timeline */
+  .timeline { max-width: 960px; margin: 8px auto 60px; padding: 8px 28px 0; position: relative; }
+  .decade {
+    margin: 26px 0 8px; padding-left: 54px; position: relative;
+    font-size: 12px; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--text-muted);
+  }
+
+  .event { position: relative; padding: 0 0 4px 54px; }
+  .event::before { /* spine segment */
+    content: ""; position: absolute; left: 21px; top: 0; bottom: -22px;
+    width: 2px; background: var(--spine);
+  }
+  .event:last-child::before { bottom: auto; height: 26px; }
+  .node {
+    position: absolute; left: 14px; top: 6px; width: 16px; height: 16px;
+    border-radius: 50%; background: var(--c); border: 3px solid var(--surface-1);
+    box-shadow: 0 0 0 1px var(--c);
+  }
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-left: 3px solid var(--c); border-radius: 10px;
+    padding: 12px 14px; margin: 2px 0 20px;
+  }
+  .card .top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .card .date { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .card .age { font-size: 11px; color: var(--text-muted); }
+  .card .cat {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--c); font-weight: 700;
+  }
+  .card h3 { margin: 4px 0 0; font-size: 15px; }
+  .card .note { margin: 6px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+  .card .actions { margin-top: 8px; display: flex; gap: 6px; opacity: 0; transition: opacity .12s; }
+  .card:hover .actions, .card:focus-within .actions { opacity: 1; }
+
+  .empty { color: var(--text-muted); font-size: 13.5px; text-align: center; padding: 48px 0; }
+
+  /* Modal form */
+  .backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    display: none; align-items: flex-start; justify-content: center;
+    padding: 40px 16px; z-index: 20; overflow-y: auto;
+  }
+  .backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 22px; width: 100%; max-width: 460px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.35);
+  }
+  .modal h2 { margin: 0 0 14px; font-size: 17px; }
+  .entry-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+  .entry-form label {
+    font-size: 11px; color: var(--text-muted);
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .entry-form label.wide, .entry-form .form-actions { grid-column: 1 / -1; }
+  .entry-form input, .entry-form select, .entry-form textarea {
+    font: inherit; font-size: 13px; padding: 7px 9px;
+    border: 1px solid var(--baseline); border-radius: 6px;
+    background: var(--page); color: var(--text-primary); width: 100%;
+  }
+  .entry-form textarea { resize: vertical; min-height: 62px; }
+  .entry-form input:focus-visible, .entry-form select:focus-visible, .entry-form textarea:focus-visible {
+    outline: 2px solid var(--c-education); outline-offset: 1px;
+  }
+  .form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Life Timeline</h1>
+  <p>Every milestone from birth to today, on one spine. Add what you've achieved and the moments that mattered — your entries are saved in this browser.</p>
+</header>
+
+<div class="toolbar">
+  <div class="birth-line">
+    <label for="birth">Born</label>
+    <input id="birth" type="date">
+  </div>
+  <div class="spacer"></div>
+  <button class="btn btn-primary" id="addBtn">+ Add milestone</button>
+</div>
+
+<div class="toolbar" style="margin-top:12px;">
+  <div class="filters" id="filters"></div>
+</div>
+
+<div class="summary" id="summary"></div>
+
+<div class="timeline" id="timeline"></div>
+
+<div class="backdrop" id="backdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">Add milestone</h2>
+    <form class="entry-form" id="form">
+      <label class="wide">Title
+        <input name="title" required maxlength="90" placeholder="e.g. Graduated university">
+      </label>
+      <label>Date
+        <input name="date" type="date" required>
+      </label>
+      <label>Category
+        <select name="category"></select>
+      </label>
+      <label class="wide">Note
+        <textarea name="note" maxlength="300" placeholder="What happened, why it mattered (optional)"></textarea>
+      </label>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="submitBtn">Add milestone</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+/* ---------------- Categories ---------------- */
+const CATEGORIES = [
+  { id: "birth",     label: "Birth & family", varName: "--c-birth" },
+  { id: "education", label: "Education",       varName: "--c-education" },
+  { id: "career",    label: "Career",          varName: "--c-career" },
+  { id: "personal",  label: "Personal",        varName: "--c-personal" },
+  { id: "health",    label: "Health",          varName: "--c-health" },
+  { id: "travel",    label: "Travel",          varName: "--c-travel" },
+  { id: "other",     label: "Other",           varName: "--c-other" },
+];
+const catById = (id) => CATEGORIES.find((c) => c.id === id) || CATEGORIES[CATEGORIES.length - 1];
+
+/* ---------------- Seed data (example milestones — edit or replace) ---------------- */
+const SEED_BIRTH = "1995-01-01";
+const SEED_EVENTS = [
+  { id: 1, date: "1995-01-01", category: "birth",     title: "Born",                        note: "The very start of the timeline — replace this with your real birth date above." },
+  { id: 2, date: "2013-06-15", category: "education",  title: "Finished secondary school",   note: "Example milestone. Edit or delete me." },
+  { id: 3, date: "2017-07-01", category: "education",  title: "Graduated university",        note: "Example milestone. Add your own achievements with the + button." },
+  { id: 4, date: "2018-09-03", category: "career",     title: "First full-time job",         note: "Example milestone." },
+  { id: 5, date: "2021-05-20", category: "personal",   title: "A significant personal event",note: "Example milestone." },
+];
+
+/* ---------------- State + persistence ---------------- */
+const STORAGE_KEY = "life-timeline-v1";
+let state = { birth: SEED_BIRTH, events: SEED_EVENTS.slice() };
+let activeFilters = new Set();      // empty = show all
+let editingId = null;
+
+(function restore() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved && Array.isArray(saved.events)) {
+      state = { birth: saved.birth || "", events: saved.events };
+    }
+  } catch { /* keep seeds */ }
+})();
+
+function persist() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch { /* storage unavailable — session only */ }
+}
+
+/* ---------------- Helpers ---------------- */
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function parseDate(s) { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); }
+
+const dateFmt = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const fmtDate = (s) => dateFmt.format(parseDate(s));
+
+function ageAt(dateStr) {
+  if (!state.birth) return null;
+  const b = parseDate(state.birth), d = parseDate(dateStr);
+  if (d < b) return null;
+  let age = d.getUTCFullYear() - b.getUTCFullYear();
+  const m = d.getUTCMonth() - b.getUTCMonth();
+  if (m < 0 || (m === 0 && d.getUTCDate() < b.getUTCDate())) age--;
+  return age;
+}
+
+const todayISO = () => {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+};
+
+/* ---------------- Filters ---------------- */
+function renderFilters() {
+  const wrap = document.getElementById("filters");
+  wrap.innerHTML = "";
+  CATEGORIES.forEach((c) => {
+    const count = state.events.filter((e) => e.category === c.id).length;
+    if (!count) return;
+    const chip = document.createElement("button");
+    chip.className = "chip" + (activeFilters.has(c.id) ? " active" : "");
+    chip.style.setProperty("--c", `var(${c.varName})`);
+    chip.innerHTML = `<span class="dot"></span>${esc(c.label)} <span style="color:var(--text-muted)">${count}</span>`;
+    chip.addEventListener("click", () => {
+      activeFilters.has(c.id) ? activeFilters.delete(c.id) : activeFilters.add(c.id);
+      render();
+    });
+    wrap.appendChild(chip);
+  });
+}
+
+/* ---------------- Summary ---------------- */
+function renderSummary() {
+  const el = document.getElementById("summary");
+  const events = state.events.slice().sort((a, b) => a.date < b.date ? -1 : 1);
+  const span = events.length;
+  let years = "—";
+  if (events.length && state.birth) {
+    const last = events[events.length - 1].date;
+    const a = ageAt(last);
+    years = a != null ? `${a} yrs` : "—";
+  }
+  const currentAge = state.birth ? ageAt(todayISO()) : null;
+  el.innerHTML =
+    `<div class="stat"><div class="label">Milestones</div><div class="value">${span}</div></div>` +
+    `<div class="stat"><div class="label">Age today</div><div class="value">${currentAge != null ? currentAge : "—"}</div></div>` +
+    `<div class="stat"><div class="label">First entry</div><div class="value" style="font-size:14px">${events.length ? fmtDate(events[0].date) : "—"}</div></div>` +
+    `<div class="stat"><div class="label">Latest entry</div><div class="value" style="font-size:14px">${events.length ? fmtDate(events[events.length - 1].date) : "—"}</div></div>`;
+}
+
+/* ---------------- Timeline ---------------- */
+function render() {
+  renderFilters();
+  renderSummary();
+  const tl = document.getElementById("timeline");
+  tl.innerHTML = "";
+
+  let events = state.events.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  if (activeFilters.size) events = events.filter((e) => activeFilters.has(e.category));
+
+  if (!events.length) {
+    tl.innerHTML = `<div class="empty">No milestones to show. ${state.events.length ? "Clear a filter, or " : ""}add your first with <strong>+ Add milestone</strong>.</div>`;
+    return;
+  }
+
+  let lastDecade = null;
+  events.forEach((e) => {
+    const yr = parseDate(e.date).getUTCFullYear();
+    const decade = Math.floor(yr / 10) * 10;
+    if (decade !== lastDecade) {
+      const d = document.createElement("div");
+      d.className = "decade";
+      d.textContent = `${decade}s`;
+      tl.appendChild(d);
+      lastDecade = decade;
+    }
+
+    const cat = catById(e.category);
+    const age = ageAt(e.date);
+    const wrap = document.createElement("div");
+    wrap.className = "event";
+    wrap.style.setProperty("--c", `var(${cat.varName})`);
+    wrap.innerHTML =
+      `<span class="node"></span>` +
+      `<div class="card">` +
+        `<div class="top">` +
+          `<span class="date">${fmtDate(e.date)}</span>` +
+          (age != null ? `<span class="age">age ${age}</span>` : "") +
+          `<span class="cat">${esc(cat.label)}</span>` +
+        `</div>` +
+        `<h3>${esc(e.title)}</h3>` +
+        (e.note ? `<p class="note">${esc(e.note)}</p>` : "") +
+        `<div class="actions"></div>` +
+      `</div>`;
+    const actions = wrap.querySelector(".actions");
+    const edit = document.createElement("button");
+    edit.className = "btn btn-ghost"; edit.textContent = "Edit";
+    edit.addEventListener("click", () => openForm(e.id));
+    const del = document.createElement("button");
+    del.className = "btn btn-ghost btn-danger"; del.textContent = "Delete";
+    del.addEventListener("click", () => {
+      if (confirm(`Delete "${e.title}"?`)) {
+        state.events = state.events.filter((x) => x.id !== e.id);
+        persist(); render();
+      }
+    });
+    actions.append(edit, del);
+    tl.appendChild(wrap);
+  });
+}
+
+/* ---------------- Form (add / edit) ---------------- */
+const backdrop = document.getElementById("backdrop");
+const form = document.getElementById("form");
+
+// Populate category dropdown once
+form.category.innerHTML = CATEGORIES.map((c) => `<option value="${c.id}">${esc(c.label)}</option>`).join("");
+
+function openForm(id) {
+  editingId = id != null ? id : null;
+  const existing = id != null ? state.events.find((e) => e.id === id) : null;
+  document.getElementById("modalTitle").textContent = existing ? "Edit milestone" : "Add milestone";
+  document.getElementById("submitBtn").textContent = existing ? "Save changes" : "Add milestone";
+  form.title.value = existing ? existing.title : "";
+  form.date.value = existing ? existing.date : todayISO();
+  form.category.value = existing ? existing.category : "personal";
+  form.note.value = existing ? (existing.note || "") : "";
+  backdrop.classList.add("open");
+  form.title.focus();
+}
+function closeForm() { backdrop.classList.remove("open"); editingId = null; }
+
+form.addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const entry = {
+    title: form.title.value.trim(),
+    date: form.date.value,
+    category: form.category.value,
+    note: form.note.value.trim(),
+  };
+  if (!entry.title || !entry.date) return;
+  if (editingId != null) {
+    const i = state.events.findIndex((e) => e.id === editingId);
+    if (i !== -1) state.events[i] = { ...state.events[i], ...entry };
+  } else {
+    const nextId = state.events.reduce((m, e) => Math.max(m, e.id || 0), 0) + 1;
+    state.events.push({ id: nextId, ...entry });
+  }
+  persist(); render(); closeForm();
+});
+
+document.getElementById("addBtn").addEventListener("click", () => openForm(null));
+document.getElementById("cancelBtn").addEventListener("click", closeForm);
+backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeForm(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && backdrop.classList.contains("open")) closeForm(); });
+
+/* ---------------- Birth date ---------------- */
+const birthInput = document.getElementById("birth");
+birthInput.value = state.birth || "";
+birthInput.addEventListener("change", () => {
+  state.birth = birthInput.value;
+  persist(); render();
+});
+
+/* ---------------- Boot ---------------- */
+render();
+</script>
+</body>
+</html>
