@@ -226,6 +226,17 @@ header{margin-bottom:6px;flex:none;gap:8px}
 .mv.busy{filter:saturate(.35) brightness(.75)}
 .wheel.cd .nd.sel .ring{animation:none;opacity:.35;stroke:#8f98cf!important}
 #ctl .sl{flex:none}
+
+.hud .en .sp{background:repeating-linear-gradient(45deg,#ff6b7d,#ff6b7d 4px,#ffb0ba 4px,#ffb0ba 8px)!important;animation:blink .5s infinite alternate;z-index:1}
+.hud .en .fi{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#ffb830,#ffe27a)}
+.hud .e .en .fi{left:auto;right:0}
+.hud .hs{display:flex;gap:2px;font-size:.72rem;margin-top:3px;min-height:1.1rem;opacity:.95;text-shadow:0 1px 2px #000}
+.hud .e .hs{justify-content:flex-end}
+.tn{position:absolute;left:50%;top:6px;transform:translateX(-50%);font-size:.62rem;letter-spacing:.14em;font-weight:800;color:#fff;opacity:.75;text-shadow:0 1px 3px #000;z-index:3;pointer-events:none}
+.mv.sel{border-color:var(--accent);background:linear-gradient(180deg,#4a3fd0,#2c2a8c);box-shadow:0 0 14px -2px var(--accent);transform:translateY(-3px)}
+.go.busy{opacity:.3;pointer-events:none}
+.sl.off{opacity:.25;pointer-events:none}
+.mv{height:58px}
 </style>
 </head>
 <body>
@@ -248,10 +259,10 @@ const EL={
 const TRAIT={fire:'🩸',water:'🐌',nature:'💚',storm:'💨',stone:'🧱'};
 const POOL=20,MAXHP=100,MAXEN=10,REGEN=1.25,BASE=2.3,REACH=14,PROJ_HIT=7;
 const MOVES={
-  bolt:   {icon:'🏹',wind:.30,rec:.30,mult:.85,extra:0,stun:.30},
-  rush:   {icon:'⚔️',wind:.18,rec:.55,mult:1.30,extra:0,spd:205,stun:.45},
+  bolt:   {icon:'🏹',wind:.38,rec:.30,mult:.85,extra:0,stun:.30},
+  rush:   {icon:'⚔️',wind:.12,rec:.55,mult:1.30,extra:0,spd:240,stun:.45},
   slam:   {icon:'💥',wind:.80,rec:.95,mult:2.40,extra:1,spd:160,stun:.80},
-  counter:{icon:'🛡️',wind:.04,win:.50,rec:.70,mult:1.20,extra:0},
+  counter:{icon:'🛡️',wind:.04,win:.70,rec:.70,mult:1.20,extra:0},
   focus:  {icon:'🧘',chan:.90,rec:.10,extra:0}
 };
 const idx=e=>ORDER.indexOf(e);
@@ -266,10 +277,10 @@ const tr=(f,el)=>Math.min(1,f.build[el]/16);           /* element trait strength
 function mkBuild(o){const b={};ORDER.forEach(e=>b[e]=o[e]||0);return b}
 function mkFighter(name,build,side){
   const el=ORDER.reduce((a,e)=>build[e]>build[a]?e:a,ORDER[0]);
-  return{name,side,face:side?-1:1,home:side?86:14,x:side?86:14,build,el,hp:MAXHP,energy:8,state:'idle',st:0,stT:0,cur:null,
-    grace:0,burn:null,slow:0,swapCD:0,streak:0,lastEl:null,lastT:-9,lastType:null,buf:null,strikeT:0,aiT:.5,plan:null,dg:0};
+  return{name,side,face:side?-1:1,home:side?86:14,x:side?86:14,build,el,hp:MAXHP,energy:MAXEN,state:'idle',st:0,stT:0,cur:null,
+    grace:0,burn:null,slow:0,swapCD:0,streak:0,lastEl:null,lastT:-9,slowK:0,lastType:null,buf:null,strikeT:0,aiT:.5,plan:null,dg:0};
 }
-function mkSim(P,E){return{t:0,f:[P,E],proj:[],ev:[],hitstop:0,lock:0,over:false,winner:-1}}
+function mkSim(P,E){return{t:0,f:[P,E],proj:[],ev:[],hitstop:0,lock:0,over:false,winner:-1,manual:true,turn:1,stress:1,hist:[[],[]]}}
 const costOf=(f,type,int,el)=>type==='focus'?0:Math.max(1,int+MOVES[type].extra-discount(f.build[el||f.el]));
 const dashSpd=f=>MOVES[f.cur.type].spd*(f.cur.el==='storm'?1+.15*tr(f,'storm'):1);
 
@@ -281,8 +292,8 @@ function act(S,f,type,int,rng=Math.random){
   if(type!=='focus'){let i=int;while(i>0&&costOf(f,type,i,el)>f.energy)i--;if(i<1)return 0;int=i}
   f.energy-=costOf(f,type,int,el);
   const pts=f.build[el];
-  if(f.lastEl===el&&S.t-f.lastT<4)f.streak=Math.min(3,f.streak+1);else f.streak=0;
-  f.lastEl=el;f.lastT=S.t;
+  if(f.lastEl===el&&S.turn-f.lastT<=1)f.streak=Math.min(3,f.streak+1);else f.streak=0;
+  f.lastEl=el;f.lastT=S.turn;
   const sb=1+f.streak*0.1*Math.min(1.5,Math.max(.3,pts/10));
   const crit=type!=='focus'&&rng()<critChance(pts);
   f.cur={type,el,int,crit,base:type==='focus'?0:BASE*int*power(pts)*MOVES[type].mult*sb*(crit?1.5:1)};
@@ -303,7 +314,7 @@ function koCheck(S){
 function damage(S,att,def,cast,d,kind,defState,stress){
   def.hp-=d;
   if(cast.el==='fire'&&tr(att,'fire')>0){const dps=d*.35/3*tr(att,'fire');if(!def.burn||dps>def.burn.dps)def.burn={dps,t:3}}
-  if(cast.el==='water'&&tr(att,'water')>0)def.slow=Math.max(def.slow,3*tr(att,'water')+.5);
+  if(cast.el==='water'&&tr(att,'water')>0)def.slowK=Math.max(def.slowK||0,tr(att,'water'));
   if(cast.el==='nature'&&tr(att,'nature')>0)att.hp=Math.min(MAXHP,att.hp+.15*d*tr(att,'nature'));
 }
 function hit(S,att,def,cast,kind,defState,stress){
@@ -318,7 +329,7 @@ function hit(S,att,def,cast,kind,defState,stress){
   if(!grace){
     const base=MOVES[cast.type].stun||.3;
     def.state='stun';def.st=0;def.stT=base*(def.el==='stone'?1-.5*tr(def,'stone'):1);def.cur=null;def.buf=null;
-    def.x=Math.max(9,Math.min(91,def.x+att.face*5));
+    def.x=Math.max(5,Math.min(95,def.x+att.face*5));
   }
   S.hitstop=Math.max(S.hitstop,cast.type==='slam'?.13:kind==='melee'?.08:.05);
   S.ev.push({type:'hit',side:def.side,dmg:d,crit:cast.crit,rel,kind,move:cast.type,el:cast.el,counterhit:committed,x:def.x});
@@ -329,7 +340,7 @@ function parryMelee(S,def,att,stress){
   def.energy=Math.min(MAXEN,def.energy+1);
   const rel=relation(c.el,att.el);
   const d=c.base*TYPE_MULT[rel]*stress;
-  att.hp-=d;att.state='stun';att.st=0;att.stT=.7;att.cur=null;att.buf=null;att.x=Math.max(9,Math.min(91,att.x+def.face*4));
+  att.hp-=d;att.state='stun';att.st=0;att.stT=.7;att.cur=null;att.buf=null;att.x=Math.max(5,Math.min(95,att.x+def.face*4));
   goRec(def,.2);def.strikeT=.25;def.cur=null;
   S.hitstop=.12;S.ev.push({type:'parry',side:def.side,kind:'melee',dmg:d,x:att.x});koCheck(S);
 }
@@ -338,11 +349,11 @@ function step(S,dt,rng=Math.random){
   if(S.lock>0){S.lock-=dt;return}
   if(S.hitstop>0){S.hitstop-=dt;return}
   S.t+=dt;
-  const stress=S.t>60?1+(S.t-60)/30:1;
+  const stress=S.stress||1;
   for(const f of S.f){
     f.swapCD=Math.max(0,f.swapCD-dt);f.grace=Math.max(0,f.grace-dt);f.strikeT=Math.max(0,f.strikeT-dt);
     if(f.slow>0)f.slow-=dt;
-    f.energy=Math.min(MAXEN,f.energy+REGEN*(f.slow>0?.5:1)*dt);
+    if(!S.manual)f.energy=Math.min(MAXEN,f.energy+REGEN*(f.slow>0?.5:1)*dt);
     if(f.burn){f.hp-=f.burn.dps*dt;f.burn.t-=dt;if(f.burn.t<=0)f.burn=null}
     f.st+=dt;
     const o=S.f[1-f.side];
@@ -409,77 +420,63 @@ function step(S,dt,rng=Math.random){
   koCheck(S);
 }
 
-/* ---------------- enemy brain (real-time, reaction-limited) ---------------- */
+/* ---------------- turn flow ---------------- */
+function beginTurn(S,moves,rng=Math.random){
+  S.t=0;S.proj=[];S.hitstop=0;
+  S.f.forEach((f,i)=>{const m=moves[i];f.state='idle';f.st=0;f.cur=null;f.buf=null;f.grace=0;f.strikeT=0;f.dg=0;f.swapCD=0;if(m.el&&f.build[m.el]>0)f.el=m.el});
+  S.f.forEach((f,i)=>{const m=moves[i];S.hist[i].push({type:m.type,el:f.el});if(act(S,f,m.type,m.int,rng)===0)act(S,f,'focus',0,rng)});
+}
+function settled(S){
+  return S.lock<=0&&S.hitstop<=0&&S.proj.length===0&&S.f.every(f=>f.state==='idle'&&Math.abs(f.x-f.home)<.6);
+}
+function endTurn(S){
+  S.f.forEach(f=>{f.energy=Math.min(MAXEN,f.energy+3*(1-.5*(f.slowK||0)));f.slowK=0;f.x=f.home});
+  S.turn++;S.stress=1+.12*Math.max(0,S.turn-14);
+}
+function runTurn(S,moves,rng=Math.random){
+  beginTurn(S,moves,rng);
+  let n=0;
+  while(!S.over&&!(settled(S)&&S.t>.05)&&n++<600)step(S,1/60,rng);
+  S.ev.length=0;
+  if(!S.over)endTurn(S);
+}
+/* ---------------- enemy brain (simultaneous choice, reads your habits) ---------------- */
+const RESP={rush:['counter'],slam:['rush','bolt'],bolt:['rush','bolt'],counter:['slam','bolt'],focus:['rush','rush','slam']};
+const TYPES=['bolt','rush','slam','counter','focus'];
 const pickW=(items,w,rng)=>{const t=w.reduce((a,b)=>a+b,0);let r=rng()*t;for(let i=0;i<items.length;i++){r-=w[i];if(r<=0)return items[i]}return items[items.length-1]};
-function aiInt(f,type,rng){
-  let want=Math.max(1,Math.min(5,Math.round(f.energy/2.2+(rng()-.5)*1.6)));
-  while(want>1&&costOf(f,type,want)>f.energy)want--;
-  return want;
-}
-function aiElement(S,f,o,sk,rng){
-  const els=ORDER.filter(e=>f.build[e]>0);if(els.length<2||f.swapCD>0)return;
-  let pool=els;
-  if(rng()<sk){const c=els.filter(e=>beats(e,o.el));if(c.length)pool=c}
-  const pick=pickW(pool,pool.map(e=>Math.pow(power(f.build[e]),1.3)*(e===f.el?1.4:1)),rng);
-  if(pick!==f.el)swap(S,f,pick);
-}
-function aiStep(S,f,prof,rng,dt){
-  if(S.over||S.lock>0||f.hp<=0)return;
-  const o=S.f[1-f.side],R=prof.react,sk=prof.skill;
-  if(f.plan&&S.t>=f.plan.at){const p=f.plan;f.plan=null;if(p.swap)swap(S,f,p.swap);if(p.type)act(S,f,p.type,p.int||aiInt(f,p.type,rng),rng)}
-  f.aiT-=dt;
-  if(f.aiT>0||f.plan||f.state!=='idle')return;
-  f.aiT=R*.35+rng()*.18;
-  /* --- perceive threats --- */
-  let melee=null,proj=null;
-  if(o.cur&&(o.state==='wind'||o.state==='dash')&&(o.cur.type==='rush'||o.cur.type==='slam')){
-    const age=o.state==='wind'?o.st:o.stT+o.st,rem=o.state==='wind'?o.stT-o.st:0;
-    const eta=rem+Math.max(0,(Math.abs(o.x-f.x)-REACH)/dashSpd(o));
-    if(age>=R)melee={eta,type:o.cur.type,rem};
-  }
-  for(const p of S.proj)if(p.owner!==f.side&&p.age>=R*.8){const eta=Math.max(0,(Math.abs(p.x-f.x)-PROJ_HIT)/p.spd);if(!proj||eta<proj.eta)proj={eta,el:p.cast.el}}
-  const noise=()=>(rng()*2-1)*(1-sk)*.25;
-  const canCounter=costOf(f,'counter',1)<=f.energy;
-  if(melee&&rng()<.35+sk*.65){
-    if(melee.type==='slam'&&melee.rem>.52&&costOf(f,'rush',1)<=f.energy&&rng()<.5){f.plan={at:S.t,type:'rush'};return}
-    const e=melee.eta+noise();
-    if(canCounter&&e>=.06){f.plan={at:S.t+Math.max(0,e-.28),type:'counter',int:aiInt(f,'counter',rng)};return}
-  }
-  if(proj&&rng()<.3+sk*.6){
-    const alts=ORDER.filter(e=>f.build[e]>0&&beats(e,proj.el)&&e!==f.el);
-    if(alts.length&&f.swapCD<=0&&rng()<.55){swap(S,f,alts[0]);return}
-    const e=proj.eta+noise();
-    if(canCounter&&e>=.06&&rng()<.6){f.plan={at:S.t+Math.max(0,e-.28),type:'counter',int:aiInt(f,'counter',rng)};return}
-  }
-  /* --- offense --- */
-  if(o.state==='counter'&&rng()<.4+sk*.5)return;
-  aiElement(S,f,o,sk,rng);
-  const vul=(o.state==='rec'||o.state==='stun'||o.state==='focus')?o.stT-o.st:0;
-  let type=null;
-  if(vul>1.15&&rng()<.45+sk*.45&&costOf(f,'slam',1)<=f.energy)type='slam';
-  else if(vul>.5&&rng()<.45+sk*.45&&costOf(f,'rush',1)<=f.energy)type='rush';
-  if(!type){
-    const w=prof.w,low=f.energy<3;
-    type=pickW(['bolt','rush','slam','wait','focus'],[w.bolt*(low?.3:1),w.rush*(low?.2:1),w.slam*(low?.1:1),w.wait*(low?.8:1),w.focus*(low?4:.4)],rng);
-  }
-  if(type==='wait')return;
-  if(type==='focus'){if(o.state==='idle'&&o.energy>3&&rng()<.6)return;act(S,f,'focus',0,rng);return}
-  act(S,f,type,aiInt(f,type,rng),rng);
+function aiChoose(S,f,prof,rng=Math.random){
+  const o=S.f[1-f.side],H=S.hist[o.side].slice(-8),sk=prof.skill;
+  const pt={bolt:1,rush:1,slam:1,counter:1,focus:1},pe={};ORDER.forEach(e=>pe[e]=.6);
+  H.forEach((m,i)=>{pt[m.type]+=1+i*.25;pe[m.el]+=1+i*.25});
+  const can=t=>costOf(f,t,1,f.el)<=f.energy;
+  let type;
+  if(f.energy<2.5&&rng()<.75)type='focus';
+  else if(rng()<sk){const pred=pickW(TYPES,TYPES.map(t=>pt[t]),rng);type=pickW(RESP[pred],RESP[pred].map(()=>1),rng)}
+  else type=pickW(TYPES,TYPES.map(t=>prof.w[t]),rng);
+  if(!can(type))type=can('bolt')&&type!=='focus'?'bolt':'focus';
+  const els=ORDER.filter(e=>f.build[e]>0);let el;
+  const wpow=e=>Math.pow(power(f.build[e]),1.3);
+  if(els.length===1)el=els[0];
+  else if(rng()<sk){const pr=pickW(ORDER,ORDER.map(e=>pe[e]),rng);const c=els.filter(e=>beats(e,pr));const pool=c.length?c:els;el=pickW(pool,pool.map(wpow),rng)}
+  else el=pickW(els,els.map(e=>wpow(e)*(e===f.el?1.5:1)),rng);
+  let int=Math.max(1,Math.min(5,Math.round(f.energy/2.4+(rng()-.5)*1.8)));
+  while(int>1&&costOf(f,type,int,el)>f.energy)int--;
+  return{type,el,int};
 }
 /* ======================= (test hook) ======================= */
-if(typeof module!=='undefined')module.exports={ORDER,mkBuild,mkFighter,mkSim,step,act,swap,aiStep,costOf,power,beats,POOL,MAXHP,MOVES};
+if(typeof module!=='undefined')module.exports={ORDER,mkBuild,mkFighter,mkSim,step,act,swap,beginTurn,settled,endTurn,runTurn,aiChoose,costOf,power,beats,POOL,MAXHP,MOVES};
 //#UI
 if(typeof document!=='undefined'){
 const HEADS=[
-  {av:'🐲',name:'Ember',suit:'#e8512f',dark:'#6b1d0e',build:mkBuild({fire:15,water:5}),ai:{react:.55,skill:.25,w:{bolt:.45,rush:.32,slam:.2,wait:.45,focus:.4}}},
-  {av:'🐙',name:'Mara',suit:'#2f8fe8',dark:'#123d6b',build:mkBuild({water:10,stone:10}),ai:{react:.45,skill:.45,w:{bolt:.5,rush:.28,slam:.14,wait:.4,focus:.5}}},
-  {av:'🦌',name:'Warden',suit:'#3fa64f',dark:'#14471b',build:mkBuild({nature:12,storm:8}),ai:{react:.36,skill:.55,w:{bolt:.45,rush:.3,slam:.12,wait:.4,focus:.5}}},
-  {av:'🦅',name:'Kei',suit:'#d9b814',dark:'#5e4d06',build:mkBuild({fire:4,nature:4,stone:4,storm:4,water:4}),ai:{react:.28,skill:.7,w:{bolt:.55,rush:.25,slam:.1,wait:.35,focus:.5}}},
-  {av:'🦉',name:'Sage',suit:'#9a5cf0',dark:'#34166b',build:mkBuild({storm:8,fire:6,stone:6}),ai:{react:.21,skill:.85,w:{bolt:.5,rush:.3,slam:.12,wait:.3,focus:.5}}}
+  {av:'🐲',name:'Ember',suit:'#e8512f',dark:'#6b1d0e',build:mkBuild({fire:15,water:5}),ai:{skill:.15,w:{bolt:.35,rush:.35,slam:.15,counter:.05,focus:.2}}},
+  {av:'🐙',name:'Mara',suit:'#2f8fe8',dark:'#123d6b',build:mkBuild({water:10,stone:10}),ai:{skill:.35,w:{bolt:.3,rush:.3,slam:.15,counter:.15,focus:.2}}},
+  {av:'🦌',name:'Warden',suit:'#3fa64f',dark:'#14471b',build:mkBuild({nature:12,storm:8}),ai:{skill:.5,w:{bolt:.3,rush:.3,slam:.15,counter:.15,focus:.2}}},
+  {av:'🦅',name:'Kei',suit:'#d9b814',dark:'#5e4d06',build:mkBuild({fire:4,nature:4,stone:4,storm:4,water:4}),ai:{skill:.65,w:{bolt:.35,rush:.3,slam:.1,counter:.15,focus:.2}}},
+  {av:'🦉',name:'Sage',suit:'#9a5cf0',dark:'#34166b',build:mkBuild({storm:8,fire:6,stone:6}),ai:{skill:.8,w:{bolt:.3,rush:.3,slam:.12,counter:.18,focus:.2}}}
 ];
 const ENEMIES=HEADS;
 const $=s=>document.querySelector(s);
-const G={level:0,build:mkBuild({fire:10,water:10}),focus:'fire',screen:'build',sel:{int:3},sim:null};
+const G={level:0,build:mkBuild({fire:10,water:10}),focus:'fire',screen:'build',sel:{int:3},plan:{type:'bolt'},sim:null};
 const buzz=n=>{try{navigator.vibrate&&navigator.vibrate(n)}catch(e){}};
 const A=(el,kf,o)=>{try{return el.animate(kf,Object.assign({duration:300,easing:'ease-out'},o)).finished.catch(()=>{})}catch(e){return Promise.resolve()}};
 const pts=b=>ORDER.reduce((a,e)=>a+b[e],0);
@@ -525,7 +522,7 @@ function swipe(el,onX,th=30){
 }
 
 /* ================= BUILD SCREEN ================= */
-const brain=a=>`🧠<span class="stars">${a.react<.3?'★★★':a.react<.45?'★★☆':'★☆☆'}</span>`;
+const brain=a=>`🧠<span class="stars">${a.skill>=.65?'★★★':a.skill>=.35?'★★☆':'★☆☆'}</span>`;
 const miniBuild=b=>ORDER.filter(e=>b[e]>0).map(e=>`<span class="tag" style="color:${EL[e].color}">${EL[e].icon}<b>${b[e]}</b></span>`).join('');
 function renderBuild(){
   stopLoop();G.screen='build';ladder();
@@ -583,7 +580,7 @@ function preset(n){
 
 /* ================= BATTLE ================= */
 const MV_LIST=[['bolt','↠'],['rush','→'],['slam','⤓'],['counter','◈'],['focus','◌']];
-let TF=[1,0,0,1,0,0],S=null,mySim=0,cv=null,cx=null,CW=360,CH=260,GY=210,FS=1,bg=null,raf=0,lastTs=0,acc=0,paused=false;
+let phase='choose',UT=0,introT=0,gapT=0,TF=[1,0,0,1,0,0],S=null,mySim=0,cv=null,cx=null,CW=360,CH=260,GY=210,FS=1,bg=null,raf=0,lastTs=0,acc=0,paused=false;
 let FXS=[],TXT=[],shakeT=0,flashT=0,banner=null,koT=0,finished=false,rngf=Math.random;
 const hudC={};
 function stopLoop(){cancelAnimationFrame(raf);raf=0;S=null;mySim++}
@@ -593,24 +590,25 @@ function renderBattle(){
   $('#app').innerHTML=`
   <div class="card stage" id="stage"><canvas id="cv"></canvas>
     <div class="hud">
-      <div class="p"><div class="nm">🧙 YOU</div><div class="bar hp you" id="hpP"><i class="gh"></i><i class="fl"></i><b></b></div><div class="en" id="enP"><i></i></div></div>
-      <div class="e"><div class="nm">${en.name.toUpperCase()} ${en.av}</div><div class="bar hp" id="hpE"><i class="gh"></i><i class="fl"></i><b></b></div><div class="en" id="enE"><i></i></div></div>
-    </div></div>
+      <div class="p"><div class="nm">🧙 YOU</div><div class="bar hp you" id="hpP"><i class="gh"></i><i class="fl"></i><b></b></div><div class="en" id="enP"><i class="sp"></i><i class="fi"></i></div><div class="hs" id="hsP"></div></div>
+      <div class="e"><div class="nm">${en.name.toUpperCase()} ${en.av}</div><div class="bar hp" id="hpE"><i class="gh"></i><i class="fl"></i><b></b></div><div class="en" id="enE"><i class="fi"></i></div><div class="hs" id="hsE"></div></div>
+    </div><div class="tn" id="tn"></div></div>
   <div class="card grow" id="ctl">
     <div class="wheelbox swipe-hint" id="wh">${wheelHTML('el')}</div>
     <div class="sl" id="sl"><div class="trk" id="trk"><i class="fill"></i>${[0,1,2,3,4].map(i=>`<i class="nt" style="left:${i*25}%"></i>`).join('')}<div class="th" id="th"></div></div></div>
     <div class="moves" id="moves">${MV_LIST.map(([m,g])=>`<button class="mv" data-mv="${m}"><span class="ic">${MOVES[m].icon}</span><span class="rg">${g}</span><span class="cc"></span></button>`).join('')}</div>
+    <button class="go" id="go" data-a="go"><span id="gotxt"></span><span class="up">⬆</span></button>
   </div>`;
-  swipe($('#wh'),d=>cycleEl(d));setupSlider();
+  swipe($('#wh'),d=>cycleEl(d));setupSlider();setupGo();
   startDuel();slideIn();
 }
 function startDuel(){
   const en=ENEMIES[G.level];
   const P=mkFighter('You',{...G.build},0),E=mkFighter(en.name,{...en.build},1);
   P.pz=null;E.pz=null;
-  S=mkSim(P,E);S.lock=1.6;G.sim=S;
-  FXS=[];TXT=[];shakeT=0;flashT=0;koT=0;finished=false;banner={t:0,txt:['READY?','FIGHT!']};acc=0;paused=false;
-  hudC.k='';Object.keys(hudC).forEach(k=>delete hudC[k]);
+  S=mkSim(P,E);G.sim=S;G.plan.type='bolt';G.sel.int=3;
+  FXS=[];TXT=[];shakeT=0;flashT=0;koT=0;finished=false;banner={t:0,txt:['READY?','FIGHT!']};acc=0;paused=false;phase='intro';introT=1.6;UT=0;
+  Object.keys(hudC).forEach(k=>delete hudC[k]);
   cv=$('#cv');cx=cv.getContext('2d');resize();
   new ResizeObserver(()=>resize()).observe($('#stage'));
   syncCtl(true);
@@ -662,9 +660,12 @@ const PO={
   ko:{lean:0,head:0,aF1:25,aF2:10,aB1:-20,aB2:-10,lF1:8,lF2:0,lB1:-8,lB2:0},
   win:{lean:-4,head:0,aF1:172,aF2:178,aB1:160,aB2:170,lF1:22,lF2:0,lB1:-22,lB2:0}
 };
+const hiddenFor=f=>f.side===1&&(phase==='choose'||phase==='intro'||phase==='gap');
+const PLANPOSE={bolt:'boltWind',rush:'rushWind',slam:'slamWind',counter:'guard',focus:'sit'};
 function poseFor(f){
   if(f.hp<=0)return PO.ko;
   if(S.over&&S.winner===f.side)return PO.win;
+  if(phase==='choose'&&f.side===0)return PO[PLANPOSE[G.plan.type]];
   switch(f.state){
     case'wind':{const t=f.cur.type;return t==='bolt'?PO.boltWind:t==='rush'?PO.rushWind:t==='slam'?PO.slamWind:PO.guard}
     case'dash':return f.cur.type==='slam'?PO.slamDash:PO.dash;
@@ -691,13 +692,13 @@ function drawFighter(f,dt){
   if(!f.pz)f.pz={...PO.stance};
   const k=1-Math.exp(-dt*22);for(const key in tgt)f.pz[key]+=(tgt[key]-f.pz[key])*k;
   const p={...f.pz};
-  if(f.state==='dash'&&f.cur.type==='rush'){const s=Math.sin(S.t*30)*38;p.lF1+=s;p.lB1-=s}
+  if(f.state==='dash'&&f.cur.type==='rush'){const s=Math.sin(UT*30)*38;p.lF1+=s;p.lB1-=s}
   const gap=Math.abs(f.x-o.x);
-  let yOff=Math.sin(S.t*3+f.side*2)*1.3*(f.state==='idle'?1:0);
+  let yOff=Math.sin(UT*3+f.side*2)*1.3*(f.state==='idle'?1:0);
   if(f.state==='dash'&&f.cur.type==='slam')yOff-=52*Math.sin(Math.PI*Math.max(0,Math.min(1,1-(gap-REACH)/Math.max(1,f.dg-REACH))));
-  if(f.state==='focus')yOff-=6+Math.sin(S.t*4)*3;
+  if(f.state==='focus'||(phase==='choose'&&f.side===0&&G.plan.type==='focus'))yOff-=6+Math.sin(UT*4)*3;
   f.koP=(f.koP||0)+((f.hp<=0?1:0)-(f.koP||0))*Math.min(1,dt*5);
-  const col=EL[f.el].color,x=GX(f.x);
+  const hid=hiddenFor(f),col=hid?'#8f98cf':EL[f.el].color,x=GX(f.x);
   /* ground rune */
   cx.save();cx.translate(x,GY);
   cx.fillStyle=col+'33';cx.strokeStyle=col+'aa';cx.lineWidth=1.5;cx.beginPath();cx.ellipse(0,2,38*FS,9*FS,0,0,7);cx.fill();cx.stroke();
@@ -744,13 +745,16 @@ function drawFighter(f,dt){
   const bx=x,by=Math.max(60,hy-14);
   cx.save();cx.translate(bx,by);
   cx.fillStyle='#0b0e1dcc';cx.strokeStyle=col;cx.lineWidth=2;cx.beginPath();cx.arc(0,0,12,0,7);cx.fill();cx.stroke();
-  cx.font=`14px ${EMF}`;cx.textAlign='center';cx.textBaseline='middle';cx.fillText(EL[f.el].icon,0,1);
-  if(f.swapCD>0){cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(0,0,15,-1.57,-1.57+6.28*(f.swapCD/.7));cx.stroke()}
-  if((f.state==='wind'||f.state==='counter')&&f.cur){
-    const pr=f.state==='wind'?f.st/f.stT:1-f.st/f.stT,tcol=f.cur.type==='slam'?'#ff6b7d':f.cur.type==='counter'?'#ffd166':'#fff';
+  cx.font=`14px ${EMF}`;cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle='#fff';cx.fillText(hid?'❔':EL[f.el].icon,0,1);
+  if(phase==='choose'&&f.side===0){
+    cx.translate(0,-26);cx.fillStyle='#0b0e1dcc';cx.strokeStyle='#ffffff88';cx.setLineDash([4,3]);cx.beginPath();cx.arc(0,0,13,0,7);cx.fill();cx.stroke();cx.setLineDash([]);
+    cx.fillStyle='#fff';cx.fillText(MOVES[G.plan.type].icon,0,1);
+  }
+  if((f.state==='wind'||f.state==='counter'||f.state==='focus')&&f.cur&&phase!=='choose'){
+    const pr=f.state==='counter'?1-f.st/f.stT:f.st/f.stT,tcol=f.cur.type==='slam'?'#ff6b7d':f.cur.type==='counter'?'#ffd166':f.cur.type==='focus'?'#8f98cf':'#fff';
     cx.translate(0,-26);cx.fillStyle='#0b0e1dcc';cx.beginPath();cx.arc(0,0,13,0,7);cx.fill();
-    cx.strokeStyle=tcol;cx.lineWidth=3;cx.beginPath();cx.arc(0,0,13,-1.57,-1.57+6.28*pr);cx.stroke();
-    cx.font=`14px ${EMF}`;cx.fillStyle='#fff';cx.fillText(MOVES[f.cur.type].icon,0,1);
+    cx.strokeStyle=tcol;cx.lineWidth=3;cx.beginPath();cx.arc(0,0,13,-1.57,-1.57+6.28*Math.min(1,pr));cx.stroke();
+    cx.fillStyle='#fff';cx.fillText(MOVES[f.cur.type].icon,0,1);
   }
   cx.restore();
 }
@@ -773,11 +777,11 @@ function handleEvents(){
       spark(e.x,EL[e.el].color,big?22:12,EL[e.el].icon);v.flash=.14;
       shakeT=Math.max(shakeT,big?.28:.14);if(big)flashT=.12;
       const rel=e.rel;
-      addText(e.x,'-'+Math.round(e.dmg),e.crit?'#ffd166':rel==='adv'?'#ff6b7d':rel==='res'?'#9aa3d6':'#fff',e.crit?30:big?26:20);
-      if(e.counterhit)addText(e.x,'COUNTER!','#ffd166',13,-22);
-      else if(e.crit)addText(e.x,'CRIT!','#ffd166',13,-22);
-      else if(rel==='adv')addText(e.x,'▲','#5ee6a0',16,-22);
-      else if(rel==='res')addText(e.x,'▼ resisted','#9aa3d6',12,-22);
+      addText(e.x+(e.side===0?-7:7),'-'+Math.round(e.dmg),e.crit?'#ffd166':rel==='adv'?'#ff6b7d':rel==='res'?'#9aa3d6':'#fff',e.crit?30:big?26:20);
+      if(e.counterhit)addText(e.x+(e.side===0?-7:7),'COUNTER!','#ffd166',13,-22);
+      else if(e.crit)addText(e.x+(e.side===0?-7:7),'CRIT!','#ffd166',13,-22);
+      else if(rel==='adv')addText(e.x+(e.side===0?-7:7),'▲','#5ee6a0',16,-22);
+      else if(rel==='res')addText(e.x+(e.side===0?-7:7),'▼ resisted','#9aa3d6',12,-22);
       buzz(e.side===0?[25,20,35]:12);
     }else if(e.type==='parry'){
       spark(e.x,'#ffd166',18);addText(e.x,'PARRY!','#ffd166',26);flashT=.1;shakeT=.2;buzz(e.side===0?[15,15,15]:10);
@@ -789,11 +793,16 @@ function handleEvents(){
   S.ev.length=0;
 }
 function frame(ts){
-  const dt=Math.min(.05,(ts-lastTs)/1000);lastTs=ts;
-  if(!paused){
+  const dt=Math.min(.05,(ts-lastTs)/1000);lastTs=ts;UT+=dt;
+  if(phase==='intro'){introT-=dt;if(introT<=0){phase='choose';syncCtl(true)}}
+  else if(phase==='exec'&&!paused){
     acc+=dt;let n=0;
-    while(acc>=1/60&&n++<6){aiStep(S,S.f[1],ENEMIES[G.level].ai,rngf,1/60);step(S,1/60,rngf);acc-=1/60;handleEvents()}
-  }
+    while(acc>=1/60&&n++<6){
+      step(S,1/60,rngf);handleEvents();acc-=1/60;
+      if(S.over){phase='over';break}
+      if(settled(S)&&S.t>.05){endTurn(S);phase='gap';gapT=.4;acc=0;break}
+    }
+  }else if(phase==='gap'){gapT-=dt;if(gapT<=0){phase='choose';syncCtl(true)}}
   if(S.over){koT+=dt;if(koT>2&&!finished){finished=true;finish()}}
   render(dt);syncHud();syncCtl(false);
 }
@@ -802,7 +811,7 @@ function render(dt){
   cx.save();
   if(shakeT>0){shakeT-=dt;cx.translate((Math.random()-.5)*Math.min(.3,shakeT)*34,(Math.random()-.5)*Math.min(.3,shakeT)*24)}
   /* element glow on the ground */
-  S.f.forEach(f=>glow(GX(f.x),GY,70*FS,EL[f.el].color,.18));
+  S.f.forEach(f=>glow(GX(f.x),GY,70*FS,hiddenFor(f)?'#8f98cf':EL[f.el].color,.18));
   /* draw the one further from centre first */
   const order=[S.f[0],S.f[1]];
   order.forEach(f=>drawFighter(f,dt));
@@ -838,6 +847,7 @@ function render(dt){
 }
 
 /* ---------- HUD + controls sync ---------- */
+const effInt=(P,type,el)=>{let i=G.sel.int;while(i>1&&costOf(P,type,i,el)>P.energy)i--;return i};
 function setBar(k,f){
   const bar=$('#hp'+k),w=Math.max(0,Math.round(f.hp));if(hudC['h'+k]===w)return;hudC['h'+k]=w;
   bar.querySelector('.fl').style.width=w+'%';bar.querySelector('.gh').style.width=w+'%';
@@ -845,55 +855,76 @@ function setBar(k,f){
 }
 function syncHud(){
   const[P,E]=S.f;setBar('P',P);setBar('E',E);
-  [['P',P],['E',E]].forEach(([k,f])=>{const w=(f.energy/MAXEN*100).toFixed(1);if(hudC['e'+k]!==w){hudC['e'+k]=w;$('#en'+k).firstElementChild.style.width=w+'%'}});
+  const cost=phase==='choose'?costOf(P,G.plan.type,effInt(P,G.plan.type,P.el),P.el):0;
+  [['P',P],['E',E]].forEach(([k,f])=>{const w=(f.energy/MAXEN*100).toFixed(1);if(hudC['e'+k]!==w){hudC['e'+k]=w;$('#en'+k).querySelector('.fi').style.width=w+'%'}});
+  const sp=$('#enP .sp'),sk=cost+'|'+P.energy;if(hudC.sp!==sk){hudC.sp=sk;sp.style.left=Math.max(0,(P.energy-cost)/MAXEN*100)+'%';sp.style.width=(Math.min(cost,P.energy)/MAXEN*100)+'%'}
+  const hk=S.hist[0].length;if(hudC.hk!==hk){hudC.hk=hk;
+    const f=h=>h.slice(-5).map(m=>`<span>${EL[m.el].icon}${MOVES[m.type].icon}</span>`).join('');
+    $('#hsP').innerHTML=f(S.hist[0]);$('#hsE').innerHTML=f(S.hist[1])}
+  const tn='TURN '+S.turn;if(hudC.tn!==tn){hudC.tn=tn;$('#tn').textContent=tn}
 }
 function syncCtl(force){
-  const P=S.f[0],E=S.f[1];
-  const key=[P.el,E.el,G.sel.int,P.state,Math.floor(P.energy),P.swapCD>0,E.el].join('|');
+  const P=S.f[0],E=S.f[1],ch=phase==='choose';
+  if(ch&&G.plan.type!=='focus'&&costOf(P,G.plan.type,1,P.el)>P.energy)G.plan.type='focus';
+  const key=[P.el,phase,G.plan.type,G.sel.int,Math.floor(P.energy*2),(phase==='exec'||phase==='gap'||phase==='over')?E.el:'-'].join('|');
   if(!force&&key===hudC.k)return;hudC.k=key;
-  updWheel(P.el,P.build,'el',E.el);
-  $('.wheel').classList.toggle('cd',P.swapCD>0);
+  updWheel(P.el,P.build,'el',ch||phase==='intro'?null:E.el);
   const col=EL[P.el].color,th=$('#th'),sl=$('#sl'),pc=(G.sel.int-1)*25;
   sl.style.setProperty('--c',col);th.style.left=pc+'%';th.textContent=G.sel.int;th.style.setProperty('--c',col);th.style.transform=`scale(${.8+.08*G.sel.int})`;
+  sl.classList.toggle('off',G.plan.type==='focus');
   const fill=sl.querySelector('.fill');fill.style.width=pc+'%';fill.style.background=`linear-gradient(90deg,${col}55,${col})`;
-  document.querySelectorAll('.mv').forEach(b=>{const m=b.dataset.mv,c=costOf(P,m,G.sel.int),c1=costOf(P,m,1);
-    b.querySelector('.cc').textContent=m==='focus'?'+3⚡':'⚡'+c;b.classList.toggle('no',c1>P.energy);b.classList.toggle('busy',P.state!=='idle')});
+  document.querySelectorAll('.mv').forEach(b=>{const m=b.dataset.mv,c=costOf(P,m,effInt(P,m,P.el),P.el),c1=costOf(P,m,1,P.el);
+    b.querySelector('.cc').textContent=m==='focus'?'+3⚡':'⚡'+c;b.classList.toggle('no',c1>P.energy);b.classList.toggle('busy',!ch);b.classList.toggle('sel',m===G.plan.type)});
+  const go=$('#go'),t=G.plan.type,c=costOf(P,t,effInt(P,t,P.el),P.el);
+  go.classList.toggle('busy',!ch);go.style.background=`linear-gradient(180deg,${col},color-mix(in srgb,${col} 55%,#000))`;
+  $('#gotxt').textContent=(t==='focus'?'':EL[P.el].icon+' ')+MOVES[t].icon+(t==='focus'?'':'  ⚡'+c);
 }
 function cycleEl(d){
-  if(!S||S.over)return;const P=S.f[0],av=ORDER.filter(e=>P.build[e]>0);if(av.length<2)return;
+  if(!S||phase!=='choose')return;const P=S.f[0],av=ORDER.filter(e=>P.build[e]>0);if(av.length<2)return;
   const i=av.indexOf(P.el);doSwap(av[(i+d+av.length)%av.length]);
 }
 function doSwap(el){
-  if(!S||S.over)return;
-  if(swap(S,S.f[0],el)){buzz(8);syncCtl(true)}
-  else A($('#wh'),[{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'none'}],{duration:180});
+  if(!S||phase!=='choose'||S.f[0].build[el]<=0)return;
+  if(S.f[0].el!==el){S.f[0].el=el;buzz(8);syncCtl(true)}
 }
-function doMove(type){
-  if(!S||S.over||paused)return;
-  const r=act(S,S.f[0],type,G.sel.int,rngf);
-  if(r===0){const e=$('#enP');e.classList.remove('deny');void e.offsetWidth;e.classList.add('deny');buzz(40)}
-  else buzz(8);
-  syncCtl(true);
+function selectMove(type){
+  if(!S||phase!=='choose')return;const P=S.f[0];
+  if(costOf(P,type,1,P.el)>P.energy){const e=$('#enP');e.classList.remove('deny');void e.offsetWidth;e.classList.add('deny');buzz(40);return}
+  G.plan.type=type;buzz(6);syncCtl(true);
+}
+function lockTurn(){
+  if(!S||phase!=='choose')return;
+  const P=S.f[0],E=S.f[1],t=G.plan.type;
+  const mp={type:t,el:P.el,int:effInt(P,t,P.el)};
+  const me=aiChoose(S,E,ENEMIES[G.level].ai,rngf);
+  beginTurn(S,[mp,me],rngf);S.lock=.6;phase='exec';acc=0;buzz(14);syncCtl(true);
+}
+function setupGo(){
+  const go=$('#go');let sy=null;
+  go.addEventListener('pointerdown',e=>{sy=e.clientY;go.setPointerCapture(e.pointerId)});
+  go.addEventListener('pointermove',e=>{if(sy===null||phase!=='choose')return;const dy=Math.min(0,e.clientY-sy);go.style.transform=`translateY(${dy*.6}px) scale(${1+Math.abs(dy)/400})`});
+  go.addEventListener('pointerup',e=>{if(sy===null)return;const dy=e.clientY-sy;sy=null;go.style.transform='';if(dy<-40){suppress=Date.now();lockTurn()}});
+  go.addEventListener('pointercancel',()=>{sy=null;go.style.transform=''});
 }
 function setupSlider(){
   const sl=$('#sl'),trk=$('#trk');let drag=false;
   const at=e=>{const r=trk.getBoundingClientRect();const i=Math.round(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*4)+1;
-    if(i!==G.sel.int){G.sel.int=i;buzz(6);if(S)syncCtl(true)}};
+    if(i!==G.sel.int&&phase==='choose'){G.sel.int=i;buzz(6);if(S)syncCtl(true)}};
   sl.addEventListener('pointerdown',e=>{drag=true;sl.setPointerCapture(e.pointerId);at(e)});
   sl.addEventListener('pointermove',e=>{if(drag)at(e)});
   const up=()=>{drag=false};sl.addEventListener('pointerup',up);sl.addEventListener('pointercancel',up);
 }
 function showHelp(){
   paused=true;
-  $('#modal').innerHTML=`<div class="modal" data-a="closeh"><div class="card"><div class="legend" style="font-size:.9rem;text-align:left;grid-template-columns:auto 1fr;gap:6px 10px">
-    <b>🏹 ↠</b><span>far · fast · weak. <span class="g">▲</span> stops ⚔️💥 charging. <span class="r">▼</span> reflected by 🛡️</span>
-    <b>⚔️ →</b><span>dash in · quick · medium. punish what's recovering</span>
-    <b>💥 ⤓</b><span>slow telegraph · huge. any hit while charging cancels it</span>
-    <b>🛡️ ◈</b><span>timing! parry ⚔️💥 · reflect 🏹. whiff = open</span>
-    <b>🧘 ◌</b><span>sit &amp; recharge ⚡. you're exposed</span>
-    <b>🔥🩸 💧🐌 🌿💚 ⚡💨 🪨🧱</b><span>burn · slow regen · leech · speed · tough (scale with points)</span>
-    <b>▲ ▼</b><span>your element beats / loses to theirs. tap the wheel to attune: <span class="g">pick what beats their element</span> → they deal ×0.4, you deal ×1.6</span>
-    <b>👆</b><span>tap moves · slide ● power · swipe wheel · drag bars</span></div></div></div>`;
+  $('#modal').innerHTML=`<div class="modal" data-a="closeh"><div class="card"><div class="legend" style="font-size:.88rem;text-align:left;grid-template-columns:auto 1fr;gap:6px 10px">
+    <b>1️⃣ pick</b><span>move · element · ● power — secret. then ▶ (or flick ⬆). both play out at once</span>
+    <b>🏹 ↠</b><span class="g">▲</span><span></span><span>beats 💥 🛡️ 🧘 · trades with ⚔️</span>
+    <b>⚔️ →</b><span>beats 🏹 💥 🧘 · <span class="r">▼</span> 🛡️ parries it</span>
+    <b>💥 ⤓</b><span>huge, slow. beats 🛡️ 🧘 · <span class="r">▼</span> cut down by 🏹 ⚔️</span>
+    <b>🛡️ ◈</b><span>beats ⚔️ (riposte) · <span class="r">▼</span> 🏹 💥 go through</span>
+    <b>🧘 ◌</b><span>skip & recharge +3⚡ · <span class="r">▼</span> exposed to everything</span>
+    <b>🔥🩸 💧🐌 🌿💚 ⚡💨 🪨🧱</b><span>burn · slow regen · leech · speed · tough</span>
+    <b>▲ ▼</b><span>your element beats theirs <span class="g">×1.6</span> · loses <span class="r">×0.4</span>. read their habits (history under bars)</span></div></div></div>`;
 }
 function finish(){
   const P=S.f[0],E=S.f[1];let em,btn,a;
@@ -901,7 +932,7 @@ function finish(){
   else if(S.winner===1){em='💀';btn='↻';a='retry'}
   else if(G.level>=ENEMIES.length-1){em='🏆';btn='↻';a='restart'}
   else{em='✨';btn='▶ '+ENEMIES[G.level+1].av;a='next'}
-  $('#modal').innerHTML=`<div class="modal"><div class="card"><div class="em">${em}</div>${S.winner===0?`<div style="margin:6px 0 14px">❤️ ${Math.round(P.hp)} · ⏱ ${S.t.toFixed(0)}s</div>`:'<div style="height:14px"></div>'}<button class="go" data-a="${a}">${btn}</button></div></div>`;
+  $('#modal').innerHTML=`<div class="modal"><div class="card"><div class="em">${em}</div>${S.winner===0?`<div style="margin:6px 0 14px">❤️ ${Math.round(P.hp)} · ⏱ ${S.turn-1}</div>`:'<div style="height:14px"></div>'}<button class="go" data-a="${a}">${btn}</button></div></div>`;
 }
 
 /* ---------- events ---------- */
@@ -913,6 +944,7 @@ document.addEventListener('click',ev=>{
   else if(a==='preset')preset(t.dataset.v);
   else if(a==='start'&&pts(G.build)===POOL)renderBattle();
   else if(a==='el')doSwap(t.dataset.e);
+  else if(a==='go')lockTurn();
   else if(a==='help')showHelp();
   else if(a==='closeh'){$('#modal').innerHTML='';paused=false}
   else if(a==='retry'||a==='next'||a==='restart'){
@@ -925,7 +957,7 @@ document.addEventListener('click',ev=>{
 let holdT=null;
 document.addEventListener('pointerdown',ev=>{
   const mvb=ev.target.closest('[data-mv]');
-  if(mvb){doMove(mvb.dataset.mv);mvb.classList.add('press');setTimeout(()=>mvb.classList.remove('press'),110);return}
+  if(mvb){selectMove(mvb.dataset.mv);mvb.classList.add('press');setTimeout(()=>mvb.classList.remove('press'),110);return}
   const h=ev.target.closest('[data-hold]');
   if(h&&!h.disabled){const e=h.dataset.e,d=+h.dataset.hold;const stepf=()=>setPts(e,G.build[e]+d);stepf();
     holdT=setTimeout(function rep(){stepf();holdT=setTimeout(rep,85)},360);return}
@@ -939,9 +971,10 @@ document.addEventListener('pointerdown',ev=>{
 document.addEventListener('keydown',e=>{
   if(G.screen!=='battle'||!S)return;
   const k={'1':'bolt','2':'rush','3':'slam','4':'counter','5':'focus'}[e.key];
-  if(k)doMove(k);
+  if(k)selectMove(k);
+  else if(e.key==='Enter'||e.key===' '){e.preventDefault();lockTurn()}
   else if(e.key==='ArrowLeft')cycleEl(-1);else if(e.key==='ArrowRight')cycleEl(1);
-  else if(e.key==='ArrowUp'){G.sel.int=Math.min(5,G.sel.int+1);syncCtl(true)}else if(e.key==='ArrowDown'){G.sel.int=Math.max(1,G.sel.int-1);syncCtl(true)}
+  else if(e.key==='ArrowUp'&&phase==='choose'){G.sel.int=Math.min(5,G.sel.int+1);syncCtl(true)}else if(e.key==='ArrowDown'&&phase==='choose'){G.sel.int=Math.max(1,G.sel.int-1);syncCtl(true)}
 });
 document.addEventListener('visibilitychange',()=>{lastTs=performance.now()});
 renderBuild();
