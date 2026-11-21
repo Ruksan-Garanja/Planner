@@ -203,6 +203,19 @@ header{margin-bottom:6px;flex:none;gap:8px}
 .fbtn{height:40px;font-size:1.25rem}
 .sum{margin:0;min-height:26px;gap:5px}.sum .tag{font-size:.82rem;padding:2px 7px}
 .go{height:46px;font-size:1.4rem;flex:none}
+
+/* ===== characters ===== */
+.arena .clash{grid-template-columns:58px 1fr 34px 1fr 58px;align-items:center;margin-top:14px}
+.char{align-self:end;display:flex;flex-direction:column;align-items:center;position:relative}
+.char .cf{font-size:2.9rem;line-height:1;filter:drop-shadow(0 4px 4px #0008)}
+.char.e .cf{transform:scaleX(-1)}
+.char .cf span{display:block;animation:breathe 2.8s ease-in-out infinite;transform-origin:50% 100%}
+.char.e .cf span{animation-delay:-1.3s}
+@keyframes breathe{50%{transform:scale(1.05,.96)}}
+.char .mat{display:block;width:62px;height:12px;border-radius:50%;margin-top:-4px;background:radial-gradient(ellipse at center,#8b7bffcc,#8b7bff33 55%,transparent 72%)}
+.char.e .mat{background:radial-gradient(ellipse at center,#ff6b7dcc,#ff6b7d33 55%,transparent 72%)}
+.char.low .cf{filter:drop-shadow(0 0 10px #ff3b5c);animation:lowp .7s infinite alternate}
+.ft .fighter{width:100%}
 </style>
 </head>
 <body>
@@ -463,7 +476,7 @@ function fixSel(){
     if(mx===0){s.form='strike';if(maxAff()===0)s.form='focus'} else if(s.int>mx)s.int=mx;
   }
 }
-const ftHTML=(k,av)=>`<div class="ft"><div class="avatar sm" id="av${k}">${av}</div><div class="fighter sp">
+const ftHTML=(k,av)=>`<div class="ft"><div class="fighter sp">
     <div class="bar hp ${k==='P'?'you':''}" id="hp${k}"><i class="gh"></i><i class="fl"></i><b></b></div><div class="pips" id="pp${k}">${'<i></i>'.repeat(MAXEN)}</div></div></div>`;
 function renderBattle(){
   G.screen='battle';ladder();const en=ENEMIES[G.level];
@@ -471,9 +484,11 @@ function renderBattle(){
   <div class="card arena" id="arena">
     <div class="ftrow">${ftHTML('P','🧙')}${ftHTML('E',en.av)}</div>
     <div class="clash">
+      <div class="char p" id="avP"><div class="cf"><span>🧙</span></div><i class="mat"></i></div>
       <div class="side"><div class="ow" id="owP"><div class="orb big" id="oP"><span class="ic"></span><span class="fb"></span></div></div><div class="inf" id="iP"></div><div class="hist" id="hsP"></div></div>
       <div class="mid" id="mid"></div>
       <div class="side"><div class="ow" id="owE" style="animation-delay:-1.1s"><div class="orb big" id="oE"><span class="ic">❔</span><span class="fb" style="display:none"></span></div></div><div class="inf" id="iE"></div><div class="hist" id="hsE"></div></div>
+      <div class="char e" id="avE"><div class="cf"><span>${en.av}</span></div><i class="mat"></i></div>
     </div><div class="fx" id="fx"></div></div>
   <div class="card grow" id="ctl">
     <div class="wheelbox swipe-hint" id="wh">${wheelHTML('el')}</div>
@@ -583,7 +598,7 @@ function startDuel(){
 const mvStr=m=>m.form==='focus'?'🧘':`${EL[m.el].icon}${FI[m.form]}${m.int}`;
 function floatTxt(side,txt,col,size){
   const fx=$('#fx'),s=document.createElement('span');s.className='fl';s.textContent=txt;s.style.color=col;if(size)s.style.fontSize=size;
-  s.style.left=side==='P'?'14%':'64%';s.style.top='34%';fx.appendChild(s);
+  s.style.left=side==='P'?'22%':'62%';s.style.top='34%';fx.appendChild(s);
   A(s,[{transform:'translateY(0) scale(.4)',opacity:0},{transform:'translateY(-18px) scale(1.4)',opacity:1,offset:.25},{transform:'translateY(-64px) scale(1)',opacity:0}],{duration:1100,easing:'ease-out'}).then(()=>s.remove());
 }
 function burst(icon,n,color){
@@ -595,7 +610,7 @@ function burst(icon,n,color){
   A(f,[{transform:'scale(.2)',opacity:1},{transform:'scale(3.2)',opacity:0}],{duration:450}).then(()=>f.remove());
 }
 function shieldFx(side){
-  const fx=$('#fx'),d=document.createElement('div');d.textContent='🛡️';d.style.cssText=`left:${side==='P'?'12%':'62%'};top:22%;font-size:3.4rem;text-shadow:0 0 18px #7cf`;fx.appendChild(d);
+  const fx=$('#fx'),d=document.createElement('div');d.textContent='🛡️';d.style.cssText=`left:${side==='P'?'20%':'60%'};top:22%;font-size:3.4rem;text-shadow:0 0 18px #7cf`;fx.appendChild(d);
   A(d,[{transform:'scale(.4)',opacity:0},{transform:'scale(1.2)',opacity:1,offset:.3},{transform:'scale(1.5)',opacity:0}],{duration:800}).then(()=>d.remove());
 }
 const hitAnim=el=>A(el,[{transform:'translateX(0)'},{transform:'translateX(-9px)'},{transform:'translateX(8px)'},{transform:'translateX(-5px)'},{transform:'none'}],{duration:420});
@@ -610,6 +625,7 @@ async function play(){
   $('#mid').textContent='';G.foe=null;updWheel(mp.form==='focus'?null:mp.el,P.build,'el',null);
   buzz(12);
   // 1 charge
+  A($('#avP'),[{transform:'translateX(0) scale(1)'},{transform:'translateX(14px) scale(1.12)'},{transform:'none'}],{duration:420});A($('#avE'),[{transform:'translateX(0) scale(1)'},{transform:'translateX(-14px) scale(1.12)'},{transform:'none'}],{duration:420});
   await Promise.all([A(owP,[{transform:'scale(1)'},{transform:'scale(1.18)'},{transform:'scale(1)'}],{duration:320}),A(owE,[{transform:'rotate(0)'},{transform:'rotate(-8deg) scale(1.1)'},{transform:'rotate(8deg) scale(1.1)'},{transform:'rotate(0)'}],{duration:320})]);
   // 2 reveal enemy
   await A($('#oE'),[{transform:'rotateY(0)'},{transform:'rotateY(90deg)'}],{duration:140,fill:'forwards'});
@@ -647,7 +663,12 @@ async function play(){
   owP.getAnimations().forEach(a=>a.cancel());owE.getAnimations().forEach(a=>a.cancel());
   owP.classList.remove('go');owE.classList.remove('go');
   mid.textContent='';
-  if(P.hp<=0||E.hp<=0){G.over=true;await sleep(250);finish();return}
+  if(P.hp<=0||E.hp<=0){G.over=true;
+    if(P.hp<=0)A($('#avP'),[{transform:'none'},{transform:'rotate(-80deg) translateY(10px)',opacity:.45}],{duration:600,fill:'forwards'});
+    if(E.hp<=0)A($('#avE'),[{transform:'none'},{transform:'rotate(80deg) translateY(10px)',opacity:.45}],{duration:600,fill:'forwards'});
+    if(P.hp>0)A($('#avP'),[{transform:'translateY(0)'},{transform:'translateY(-16px)'},{transform:'translateY(0)'},{transform:'translateY(-10px)'},{transform:'none'}],{duration:800});
+    if(E.hp>0)A($('#avE'),[{transform:'translateY(0)'},{transform:'translateY(-16px)'},{transform:'translateY(0)'},{transform:'translateY(-10px)'},{transform:'none'}],{duration:800});
+    await sleep(850);finish();return}
   setOrb('E',null);G.busy=false;$('#go').classList.remove('busy');updCtl();
 }
 function showHelp(){
