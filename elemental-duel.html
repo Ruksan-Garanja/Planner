@@ -237,6 +237,8 @@ header{margin-bottom:6px;flex:none;gap:8px}
 .go.busy{opacity:.3;pointer-events:none}
 .sl.off{opacity:.25;pointer-events:none}
 .mv{height:58px}
+.ab{display:flex;gap:5px;align-items:center;justify-content:center;font-size:.8rem;min-height:20px;flex:none;color:#fff;white-space:nowrap}
+.ab.dim{opacity:.45}
 </style>
 </head>
 <body>
@@ -256,7 +258,10 @@ const EL={
   storm:{name:'Storm',icon:'⚡',color:'#fdd835'},
   water:{name:'Water',icon:'💧',color:'#42a5f5'}
 };
-const TRAIT={fire:'🩸',water:'🐌',nature:'💚',storm:'💨',stone:'🧱'};
+const TRAIT={fire:'🩸',water:'🐌',nature:'💚',storm:'💨',stone:'⛰️'};
+const SIG={fire:{icon:'🫠',name:'Melt'},water:{icon:'🔱',name:'Pierce'},storm:{icon:'🕊️',name:'Fly'},nature:{icon:'🌱',name:'Root'},stone:{icon:'🧱',name:'Wall'}};
+const SIG_MIN=4;
+const sigOn=(f,el)=>f.build[el]>=SIG_MIN;
 const POOL=20,MAXHP=100,MAXEN=10,REGEN=1.25,BASE=2.3,REACH=14,PROJ_HIT=7;
 const MOVES={
   bolt:   {icon:'🏹',wind:.38,rec:.30,mult:.85,extra:0,stun:.30},
@@ -278,11 +283,11 @@ function mkBuild(o){const b={};ORDER.forEach(e=>b[e]=o[e]||0);return b}
 function mkFighter(name,build,side){
   const el=ORDER.reduce((a,e)=>build[e]>build[a]?e:a,ORDER[0]);
   return{name,side,face:side?-1:1,home:side?86:14,x:side?86:14,build,el,hp:MAXHP,energy:MAXEN,state:'idle',st:0,stT:0,cur:null,
-    grace:0,burn:null,slow:0,swapCD:0,streak:0,lastEl:null,lastT:-9,slowK:0,lastType:null,buf:null,strikeT:0,aiT:.5,plan:null,dg:0};
+    grace:0,burn:null,slow:0,swapCD:0,streak:0,lastEl:null,lastT:-9,slowK:0,root:0,rootNext:0,rootK:0,lastType:null,buf:null,strikeT:0,aiT:.5,plan:null,dg:0};
 }
-function mkSim(P,E){return{t:0,f:[P,E],proj:[],ev:[],hitstop:0,lock:0,over:false,winner:-1,manual:true,turn:1,stress:1,hist:[[],[]]}}
+function mkSim(P,E){return{walls:[],t:0,f:[P,E],proj:[],ev:[],hitstop:0,lock:0,over:false,winner:-1,manual:true,turn:1,stress:1,hist:[[],[]]}}
 const costOf=(f,type,int,el)=>type==='focus'?0:Math.max(1,int+MOVES[type].extra-discount(f.build[el||f.el]));
-const dashSpd=f=>MOVES[f.cur.type].spd*(f.cur.el==='storm'?1+.15*tr(f,'storm'):1);
+const dashSpd=f=>MOVES[f.cur.type].spd*(f.cur.el==='storm'?1+.15*tr(f,'storm'):1)*(f.root?1-.35*(f.rootK||1):1);
 
 /* returns 1 cast, 2 buffered, 0 refused */
 function act(S,f,type,int,rng=Math.random){
@@ -316,6 +321,7 @@ function damage(S,att,def,cast,d,kind,defState,stress){
   if(cast.el==='fire'&&tr(att,'fire')>0){const dps=d*.35/3*tr(att,'fire');if(!def.burn||dps>def.burn.dps)def.burn={dps,t:3}}
   if(cast.el==='water'&&tr(att,'water')>0)def.slowK=Math.max(def.slowK||0,tr(att,'water'));
   if(cast.el==='nature'&&tr(att,'nature')>0)att.hp=Math.min(MAXHP,att.hp+.15*d*tr(att,'nature'));
+  if(cast.el==='nature'&&sigOn(att,'nature')&&def.hp>0){def.rootNext=1;def.rootK=tr(att,'nature');S.ev.push({type:'root',side:def.side})}
 }
 function hit(S,att,def,cast,kind,defState,stress){
   const rel=relation(cast.el,def.el);
@@ -340,6 +346,7 @@ function parryMelee(S,def,att,stress){
   def.energy=Math.min(MAXEN,def.energy+1);
   const rel=relation(c.el,att.el);
   const d=c.base*TYPE_MULT[rel]*stress;
+  if(c.el==='nature'&&sigOn(def,'nature')){att.rootNext=1;att.rootK=tr(def,'nature');S.ev.push({type:'root',side:att.side})}
   att.hp-=d;att.state='stun';att.st=0;att.stT=.7;att.cur=null;att.buf=null;att.x=Math.max(5,Math.min(95,att.x+def.face*4));
   goRec(def,.2);def.strikeT=.25;def.cur=null;
   S.hitstop=.12;S.ev.push({type:'parry',side:def.side,kind:'melee',dmg:d,x:att.x});koCheck(S);
@@ -368,7 +375,10 @@ function step(S,dt,rng=Math.random){
           if(c.type==='bolt'){
             S.proj.push({owner:f.side,x:f.x+f.face*6,dir:f.face,spd:80*(c.el==='storm'?1+.3*tr(f,'storm'):1),cast:c,age:0,trail:[]});
             goRec(f,MOVES.bolt.rec);
-          }else if(c.type==='counter'){f.state='counter';f.st=0;f.stT=MOVES.counter.win}
+          }else if(c.type==='counter'){
+            f.state='counter';f.st=0;f.stT=MOVES.counter.win;
+            if(c.el==='stone'&&sigOn(f,'stone')){const W=c.base*1.8+6;S.walls=S.walls.filter(w=>w.owner!==f.side);S.walls.push({owner:f.side,x:50,hp:W,max:W,ttl:2});S.ev.push({type:'wall',side:f.side,x:50})}
+          }
           else{f.state='dash';f.st=0;f.dg=Math.abs(f.x-o.x)}
         }
         break;
@@ -379,6 +389,20 @@ function step(S,dt,rng=Math.random){
       case'stun':if(f.st>=f.stT){f.state='idle';f.st=0;f.grace=.5}break;
     }
   }
+  /* dashers meet walls */
+  for(const f of S.f){
+    if(f.state!=='dash')continue;
+    for(const w of S.walls){
+      if(w.owner===f.side||w.dead||Math.abs(f.x-w.x)>4)continue;
+      const c=f.cur;
+      if(c.el==='storm'&&sigOn(f,'storm')){if(!f.flew){f.flew=1;S.ev.push({type:'fly',side:f.side})}continue}
+      if(c.el==='water'&&sigOn(f,'water')){if(!w.seeped){w.seeped=1;S.ev.push({type:'pierce',x:w.x})}continue}
+      if(c.el==='fire'&&sigOn(f,'fire')){w.dead=true;S.ev.push({type:'wallbreak',x:w.x,melt:true});continue}
+      w.hp-=c.base;f.state='stun';f.st=0;f.stT=.45;f.cur=null;f.x-=f.face*4;S.hitstop=Math.max(S.hitstop,.08);
+      S.ev.push({type:'wallhit',x:w.x,dmg:c.base});if(w.hp<=0){w.dead=true;S.ev.push({type:'wallbreak',x:w.x})}
+    }
+  }
+  S.walls=S.walls.filter(w=>!w.dead);
   koCheck(S);
   /* melee contact (simultaneous) */
   const pre=S.f.map(f=>f.state);
@@ -387,7 +411,11 @@ function step(S,dt,rng=Math.random){
   contacts.forEach((f,ci)=>{
     const o=S.f[1-f.side];
     const c=casts[ci];
-    if(pre[o.side]==='counter'){parryMelee(S,o,f,stress);return}
+    if(pre[o.side]==='counter'){
+      if(c.el==='fire'&&sigOn(f,'fire')){S.ev.push({type:'melt',x:o.x});hit(S,f,o,c,'melee','idle',stress)}
+      else parryMelee(S,o,f,stress);
+      if(f.state==='dash'){goRec(f,MOVES[c.type].rec*.85);f.strikeT=.22;f.cur=null}
+      return}
     hit(S,f,o,c,'melee',pre[o.side],stress);
     if(f.state==='dash'){goRec(f,MOVES[c.type].rec*.85);f.strikeT=.22;f.cur=null}
   });
@@ -398,24 +426,38 @@ function step(S,dt,rng=Math.random){
   for(let i=0;i<S.proj.length;i++)for(let j=i+1;j<S.proj.length;j++){
     const a=S.proj[i],b=S.proj[j];
     if(a.dead||b.dead||a.owner===b.owner||Math.abs(a.x-b.x)>6)continue;
+    const pw=x=>x.cast.el==='water'&&sigOn(S.f[x.owner],'water');if(pw(a)||pw(b))continue;
     const r=a.cast.el===b.cast.el?'same':beats(a.cast.el,b.cast.el)?'adv':'res';
     if(r==='same'){a.dead=b.dead=true}else if(r==='adv'){b.dead=true;a.cast={...a.cast,base:a.cast.base*.75}}else{a.dead=true;b.cast={...b.cast,base:b.cast.base*.75}}
     S.ev.push({type:'clash',x:(a.x+b.x)/2});
   }
   for(const p of S.proj){
     if(p.dead)continue;
-    const t=S.f[1-p.owner];
+    const att=S.f[p.owner],t=S.f[1-p.owner];
+    for(const w of S.walls){
+      if(w.owner===p.owner||w.dead||p.passed&&p.passed[w.x]||Math.abs(p.x-w.x)>3)continue;
+      const el=p.cast.el;
+      if(el==='fire'&&sigOn(att,'fire')){w.dead=true;S.ev.push({type:'wallbreak',x:w.x,melt:true});continue}
+      if(el==='water'&&sigOn(att,'water')){(p.passed=p.passed||{})[w.x]=1;S.ev.push({type:'pierce',x:w.x});continue}
+      w.hp-=p.cast.base;p.dead=true;S.ev.push({type:'wallhit',x:w.x,dmg:p.cast.base});if(w.hp<=0){w.dead=true;S.ev.push({type:'wallbreak',x:w.x})}
+      break;
+    }
+    if(p.dead)continue;
+    const flying=t.state==='dash'&&t.cur&&t.cur.el==='storm'&&sigOn(t,'storm');
+    if(flying&&Math.abs(p.x-t.x)<=PROJ_HIT&&p.x>=-5&&p.x<=105)continue;
     if(Math.abs(p.x-t.x)<=PROJ_HIT||p.x<-5||p.x>105){
       p.dead=true;
       if(Math.abs(p.x-t.x)>PROJ_HIT)continue;
-      if(t.state==='counter'){
+      const pierce=(p.cast.el==='water'&&sigOn(att,'water'))||(p.cast.el==='fire'&&sigOn(att,'fire'));
+      if(t.state==='counter'&&!pierce){
         const c={...p.cast,base:p.cast.base*.7};
         S.proj.push({owner:t.side,x:t.x+t.face*6,dir:t.face,spd:p.spd*1.3,cast:c,age:0,trail:[],reflected:true});
         t.energy=Math.min(MAXEN,t.energy+1);goRec(t,.25);t.strikeT=.25;t.cur=null;
         S.hitstop=.08;S.ev.push({type:'parry',side:t.side,kind:'proj',x:t.x});
-      }else hit(S,S.f[p.owner],t,p.cast,'proj',t.state,stress);
+      }else{if(t.state==='counter')S.ev.push({type:pierce&&p.cast.el==='fire'?'melt':'pierce',x:t.x});hit(S,att,t,p.cast,'proj',t.state==='counter'?'idle':t.state,stress)}
     }
   }
+  S.walls=S.walls.filter(w=>!w.dead);
   S.proj=S.proj.filter(p=>!p.dead);
   koCheck(S);
 }
@@ -423,14 +465,17 @@ function step(S,dt,rng=Math.random){
 /* ---------------- turn flow ---------------- */
 function beginTurn(S,moves,rng=Math.random){
   S.t=0;S.proj=[];S.hitstop=0;
-  S.f.forEach((f,i)=>{const m=moves[i];f.state='idle';f.st=0;f.cur=null;f.buf=null;f.grace=0;f.strikeT=0;f.dg=0;f.swapCD=0;if(m.el&&f.build[m.el]>0)f.el=m.el});
+  S.f.forEach((f,i)=>{const m=moves[i];f.state='idle';f.st=0;f.cur=null;f.buf=null;f.grace=0;f.strikeT=0;f.dg=0;f.swapCD=0;f.flew=0;
+    if(f.root&&f.lastEl&&f.build[f.lastEl]>0)f.el=f.lastEl;else if(m.el&&f.build[m.el]>0)f.el=m.el});
+  S.walls.forEach(w=>{w.seeped=0});
   S.f.forEach((f,i)=>{const m=moves[i];S.hist[i].push({type:m.type,el:f.el});if(act(S,f,m.type,m.int,rng)===0)act(S,f,'focus',0,rng)});
 }
 function settled(S){
   return S.lock<=0&&S.hitstop<=0&&S.proj.length===0&&S.f.every(f=>f.state==='idle'&&Math.abs(f.x-f.home)<.6);
 }
 function endTurn(S){
-  S.f.forEach(f=>{f.energy=Math.min(MAXEN,f.energy+3*(1-.5*(f.slowK||0)));f.slowK=0;f.x=f.home});
+  S.f.forEach(f=>{f.energy=Math.min(MAXEN,f.energy+3*(1-.5*(f.slowK||0)));f.slowK=0;f.x=f.home;f.root=f.rootNext;f.rootNext=0});
+  S.walls.forEach(w=>w.ttl--);S.walls=S.walls.filter(w=>w.ttl>0&&w.hp>0);
   S.turn++;S.stress=1+.12*Math.max(0,S.turn-14);
 }
 function runTurn(S,moves,rng=Math.random){
@@ -456,15 +501,18 @@ function aiChoose(S,f,prof,rng=Math.random){
   if(!can(type))type=can('bolt')&&type!=='focus'?'bolt':'focus';
   const els=ORDER.filter(e=>f.build[e]>0);let el;
   const wpow=e=>Math.pow(power(f.build[e]),1.3);
-  if(els.length===1)el=els[0];
-  else if(rng()<sk){const pr=pickW(ORDER,ORDER.map(e=>pe[e]),rng);const c=els.filter(e=>beats(e,pr));const pool=c.length?c:els;el=pickW(pool,pool.map(wpow),rng)}
-  else el=pickW(els,els.map(e=>wpow(e)*(e===f.el?1.5:1)),rng);
+  const woppo=S.walls.some(w=>w.owner===o.side);
+  if(f.root&&f.lastEl&&f.build[f.lastEl]>0)el=f.lastEl;
+  else if(els.length===1)el=els[0];
+  else if(woppo&&rng()<sk){const c=els.filter(e=>['fire','water','storm'].includes(e)&&sigOn(f,e));if(c.length)el=pickW(c,c.map(wpow),rng)}
+  if(!el&&rng()<sk){const pr=pickW(ORDER,ORDER.map(e=>pe[e]),rng);const c=els.filter(e=>beats(e,pr));const pool=c.length?c:els;el=pickW(pool,pool.map(wpow),rng)}
+  if(!el)el=pickW(els,els.map(e=>wpow(e)*(e===f.el?1.5:1)),rng);
   let int=Math.max(1,Math.min(5,Math.round(f.energy/2.4+(rng()-.5)*1.8)));
   while(int>1&&costOf(f,type,int,el)>f.energy)int--;
   return{type,el,int};
 }
 /* ======================= (test hook) ======================= */
-if(typeof module!=='undefined')module.exports={ORDER,mkBuild,mkFighter,mkSim,step,act,swap,beginTurn,settled,endTurn,runTurn,aiChoose,costOf,power,beats,POOL,MAXHP,MOVES};
+if(typeof module!=='undefined')module.exports={SIG,sigOn,ORDER,mkBuild,mkFighter,mkSim,step,act,swap,beginTurn,settled,endTurn,runTurn,aiChoose,costOf,power,beats,POOL,MAXHP,MOVES};
 //#UI
 if(typeof document!=='undefined'){
 const HEADS=[
@@ -546,7 +594,7 @@ function renderBuild(){
       <div class="step"><button data-hold="-1" data-e="${e}">−</button>
         <div class="alloc" data-e="${e}"><div class="bar"><i style="background:${EL[e].color}"></i></div></div>
         <b class="pv">0</b><button data-hold="1" data-e="${e}">+</button></div>
-      <div class="stats"><span class="s-pw"></span><span class="s-cr"></span><span class="s-dc"></span><span class="s-tr"></span><span class="stars s-st"></span></div>
+      <div class="stats"><span class="s-pw"></span><span class="s-cr"></span><span class="s-dc"></span><span class="s-tr"></span><span class="s-sg"></span><span class="stars s-st"></span></div>
     </div>`).join('')}</div>
   </div>
   <button class="go" data-a="start">▶</button>`;
@@ -563,6 +611,7 @@ function updBuild(){
     r.querySelector('.s-dc').textContent='⚡'+(discount(p)?'−'+discount(p):'0');
     const t=r.querySelector('.s-tr');t.textContent=TRAIT[e]+Math.round(tr({build:G.build},e)*100)+'%';
     r.querySelector('.s-st').textContent=stars(p);
+    const sg=r.querySelector('.s-sg');sg.textContent=SIG[e].icon+(p>=SIG_MIN?'':'🔒');sg.style.opacity=p>=SIG_MIN?1:.45;
     r.querySelector('[data-hold="-1"]').disabled=p<=0;r.querySelector('[data-hold="1"]').disabled=left<=0;
   });
   updWheel(G.focus,G.build,'focus',null);
@@ -595,6 +644,7 @@ function renderBattle(){
     </div><div class="tn" id="tn"></div></div>
   <div class="card grow" id="ctl">
     <div class="wheelbox swipe-hint" id="wh">${wheelHTML('el')}</div>
+    <div class="ab" id="ab"></div>
     <div class="sl" id="sl"><div class="trk" id="trk"><i class="fill"></i>${[0,1,2,3,4].map(i=>`<i class="nt" style="left:${i*25}%"></i>`).join('')}<div class="th" id="th"></div></div></div>
     <div class="moves" id="moves">${MV_LIST.map(([m,g])=>`<button class="mv" data-mv="${m}"><span class="ic">${MOVES[m].icon}</span><span class="rg">${g}</span><span class="cc"></span></button>`).join('')}</div>
     <button class="go" id="go" data-a="go"><span id="gotxt"></span><span class="up">⬆</span></button>
@@ -697,6 +747,8 @@ function drawFighter(f,dt){
   let yOff=Math.sin(UT*3+f.side*2)*1.3*(f.state==='idle'?1:0);
   if(f.state==='dash'&&f.cur.type==='slam')yOff-=52*Math.sin(Math.PI*Math.max(0,Math.min(1,1-(gap-REACH)/Math.max(1,f.dg-REACH))));
   if(f.state==='focus'||(phase==='choose'&&f.side===0&&G.plan.type==='focus'))yOff-=6+Math.sin(UT*4)*3;
+  const flying=f.state==='dash'&&f.cur&&f.cur.el==='storm'&&sigOn(f,'storm');
+  if(flying)yOff-=36*Math.sin(Math.PI*Math.max(0,Math.min(1,1-(gap-REACH)/Math.max(1,f.dg-REACH))))+8;
   f.koP=(f.koP||0)+((f.hp<=0?1:0)-(f.koP||0))*Math.min(1,dt*5);
   const hid=hiddenFor(f),col=hid?'#8f98cf':EL[f.el].color,x=GX(f.x);
   /* ground rune */
@@ -711,6 +763,7 @@ function drawFighter(f,dt){
     else if(c&&c.type==='rush'){glow(0,-58*FS+yOff,34*FS,col,.35)}
     else if(f.state==='counter'){cx.strokeStyle=col;cx.lineWidth=4;cx.globalAlpha=.5+.4*Math.sin(S.t*30);cx.beginPath();cx.arc(f.face*14*FS,-58*FS,40*FS,-1.3,1.3,false);cx.stroke();cx.globalAlpha=1;glow(f.face*30*FS,-58*FS,34*FS,col,.3)}
   }
+  if(f.root){cx.strokeStyle='#66bb6a';cx.lineWidth=3;cx.lineCap='round';for(let i=-2;i<=2;i++){cx.beginPath();cx.moveTo(i*9*FS,2);cx.quadraticCurveTo(i*9*FS+Math.sin(UT*2+i)*6,-14*FS,i*6*FS,-30*FS-Math.abs(i)*4);cx.stroke()}}
   cx.scale(f.face*FS,FS);
   cx.rotate(-f.koP*1.5*(1));
   /* FK */
@@ -724,6 +777,8 @@ function drawFighter(f,dt){
   const aB=arm(p.aB1,p.aB2),aF=arm(p.aF1,p.aF2);
   const flash=f.flash>0?1:0;if(f.flash>0)f.flash-=dt;
   const sc=flash?'#ffffff':suit,dc=flash?'#ffd0d0':dark,skin=flash?'#fff':'#f0c096';
+  if(flying){const fl=Math.sin(UT*40)*10;cx.strokeStyle='#ffffffcc';cx.lineWidth=4;cx.lineCap='round';
+    [[-26,-26+fl,-8],[-34,-6+fl,-2]].forEach(([wx,wy,o])=>{cx.beginPath();cx.moveTo(neck[0]-2,neck[1]+8+o);cx.quadraticCurveTo(neck[0]+wx*.5,neck[1]+wy-14,neck[0]+wx,neck[1]+wy);cx.stroke()})}
   limb([[0,0],kB,fB],10,dc,'#0008');limb(aB,8,dc,'#0008');
   limb([[0,2],neck],17,sc,dc);
   cx.fillStyle=col;cx.fillRect(-9,-4,18,5);
@@ -758,6 +813,22 @@ function drawFighter(f,dt){
   }
   cx.restore();
 }
+function drawWall(w){
+  if(w.b===undefined)w.b=UT;
+  const g=Math.min(1,(UT-w.b)/.25),ease=g<1?1-Math.pow(1-g,3)*(1+Math.sin(g*9)*.0):1,x=GX(w.x),h=74*FS*ease,wd=26*FS,hp=Math.max(0,w.hp/w.max);
+  const col=w.owner===0?'#8b7bff':'#ff6b7d';
+  glow(x,GY,50*FS,col,.3);
+  cx.save();cx.translate(x,GY);
+  const gr=cx.createLinearGradient(-wd/2,0,wd/2,0);gr.addColorStop(0,'#7c6a4f');gr.addColorStop(.5,'#c2a77d');gr.addColorStop(1,'#6b5a42');
+  cx.fillStyle=gr;cx.strokeStyle='#2a2116';cx.lineWidth=2.5;
+  cx.beginPath();cx.moveTo(-wd/2,0);cx.lineTo(-wd/2+2,-h*.9);cx.lineTo(-wd/4,-h);cx.lineTo(wd/6,-h*.93);cx.lineTo(wd/2-2,-h*.97);cx.lineTo(wd/2,0);cx.closePath();cx.fill();cx.stroke();
+  cx.strokeStyle='#2a211688';cx.lineWidth=1.5;
+  for(let i=1;i<4;i++){cx.beginPath();cx.moveTo(-wd/2,-h*i/4);cx.lineTo(wd/2,-h*i/4+(i%2?3:-3));cx.stroke()}
+  const cracks=Math.floor((1-hp)*5);cx.strokeStyle='#1a140c';cx.lineWidth=2;
+  for(let i=0;i<cracks;i++){cx.beginPath();cx.moveTo(-wd/2+4+i*4,-h*.95);cx.lineTo(-wd/6+i*3,-h*.6);cx.lineTo(-wd/4+i*5,-h*.3);cx.lineTo(-wd/3+i*3,-2);cx.stroke()}
+  cx.fillStyle=col;for(let i=0;i<w.ttl;i++){cx.beginPath();cx.arc(-6+i*12,-h-8,3.5,0,7);cx.fill()}
+  cx.restore();
+}
 function drawProj(p){
   const c=p.cast,col=EL[c.el].color,x=GX(p.x),y=GY-62*FS,r=7+c.int*1.6;
   p.trail.forEach((tx,i)=>{const a=(i+1)/p.trail.length*.5;glow(GX(tx),y,r*(.4+i/10),col,a)});
@@ -777,15 +848,22 @@ function handleEvents(){
       spark(e.x,EL[e.el].color,big?22:12,EL[e.el].icon);v.flash=.14;
       shakeT=Math.max(shakeT,big?.28:.14);if(big)flashT=.12;
       const rel=e.rel;
-      addText(e.x+(e.side===0?-7:7),'-'+Math.round(e.dmg),e.crit?'#ffd166':rel==='adv'?'#ff6b7d':rel==='res'?'#9aa3d6':'#fff',e.crit?30:big?26:20);
-      if(e.counterhit)addText(e.x+(e.side===0?-7:7),'COUNTER!','#ffd166',13,-22);
-      else if(e.crit)addText(e.x+(e.side===0?-7:7),'CRIT!','#ffd166',13,-22);
-      else if(rel==='adv')addText(e.x+(e.side===0?-7:7),'▲','#5ee6a0',16,-22);
-      else if(rel==='res')addText(e.x+(e.side===0?-7:7),'▼ resisted','#9aa3d6',12,-22);
+      addText(e.x,'-'+Math.round(e.dmg),e.crit?'#ffd166':rel==='adv'?'#ff6b7d':rel==='res'?'#9aa3d6':'#fff',e.crit?30:big?26:20);
+      if(e.counterhit)addText(e.x,'COUNTER!','#ffd166',13,-22);
+      else if(e.crit)addText(e.x,'CRIT!','#ffd166',13,-22);
+      else if(rel==='adv')addText(e.x,'▲','#5ee6a0',16,-22);
+      else if(rel==='res')addText(e.x,'▼ resisted','#9aa3d6',12,-22);
       buzz(e.side===0?[25,20,35]:12);
     }else if(e.type==='parry'){
       spark(e.x,'#ffd166',18);addText(e.x,'PARRY!','#ffd166',26);flashT=.1;shakeT=.2;buzz(e.side===0?[15,15,15]:10);
     }else if(e.type==='clash'){spark(e.x,'#ffffff',10);addText(e.x,'CLASH','#fff',16)}
+    else if(e.type==='wall'){spark(e.x,'#c2a77d',14,'🪨');addText(e.x,'🧱 WALL','#e0c79a',20);shakeT=Math.max(shakeT,.18);buzz(15)}
+    else if(e.type==='wallhit'){spark(e.x,'#c2a77d',8,'🪨');addText(e.x,'-'+Math.round(e.dmg),'#c2a77d',15,-6);shakeT=Math.max(shakeT,.1)}
+    else if(e.type==='wallbreak'){spark(e.x,e.melt?'#ff7043':'#c2a77d',e.melt?20:22,e.melt?'🔥':'🪨');addText(e.x,e.melt?'🫠 MELT!':'💥 BREAK','#ffd166',20);flashT=.08;shakeT=.2}
+    else if(e.type==='pierce'){spark(e.x,'#42a5f5',10,'💧');addText(e.x,'🔱 PIERCE','#7cc4ff',16)}
+    else if(e.type==='melt'){spark(e.x,'#ff7043',14,'🔥');addText(e.x,'🫠 MELT!','#ff9a70',18)}
+    else if(e.type==='fly'){const f=S.f[e.side];addText(f.x,'🕊️','#fff',20,-10)}
+    else if(e.type==='root'){const f=S.f[e.side];spark(f.x,'#66bb6a',12,'🌿');addText(f.x,'🌱 ROOTED','#8fe08f',15,-34)}
     else if(e.type==='cast'){const f=S.f[e.side];if(e.move==='slam')addText(f.x,'⚠','#ff6b7d',22,-10);if(e.side===0)buzz(6)}
     else if(e.type==='swap'){const f=S.f[e.side];FXS.push({x:GX(f.x),y:GY-60*FS,ring:true,l:.45,m:.45,c:EL[e.el].color,r:10})}
     else if(e.type==='ko'){banner={t:0,txt:[e.winner<0?'DRAW':'K.O.!']};buzz(e.winner===0?[40,40,40,40,80]:200)}
@@ -812,6 +890,7 @@ function render(dt){
   if(shakeT>0){shakeT-=dt;cx.translate((Math.random()-.5)*Math.min(.3,shakeT)*34,(Math.random()-.5)*Math.min(.3,shakeT)*24)}
   /* element glow on the ground */
   S.f.forEach(f=>glow(GX(f.x),GY,70*FS,hiddenFor(f)?'#8f98cf':EL[f.el].color,.18));
+  S.walls.forEach(drawWall);
   /* draw the one further from centre first */
   const order=[S.f[0],S.f[1]];
   order.forEach(f=>drawFighter(f,dt));
@@ -847,6 +926,7 @@ function render(dt){
 }
 
 /* ---------- HUD + controls sync ---------- */
+const SIGTXT={fire:'melts 🧱 🛡️',water:'pierces 🧱 🛡️ 🏹',storm:'dash flies over 🧱 🏹',nature:'hit → foe rooted',stone:'🛡️ raises a wall'};
 const effInt=(P,type,el)=>{let i=G.sel.int;while(i>1&&costOf(P,type,i,el)>P.energy)i--;return i};
 function setBar(k,f){
   const bar=$('#hp'+k),w=Math.max(0,Math.round(f.hp));if(hudC['h'+k]===w)return;hudC['h'+k]=w;
@@ -866,9 +946,13 @@ function syncHud(){
 function syncCtl(force){
   const P=S.f[0],E=S.f[1],ch=phase==='choose';
   if(ch&&G.plan.type!=='focus'&&costOf(P,G.plan.type,1,P.el)>P.energy)G.plan.type='focus';
-  const key=[P.el,phase,G.plan.type,G.sel.int,Math.floor(P.energy*2),(phase==='exec'||phase==='gap'||phase==='over')?E.el:'-'].join('|');
+  if(ch&&P.root&&P.lastEl&&P.build[P.lastEl]>0)P.el=P.lastEl;
+  const key=[P.el,P.root,S.walls.length,phase,G.plan.type,G.sel.int,Math.floor(P.energy*2),(phase==='exec'||phase==='gap'||phase==='over')?E.el:'-'].join('|');
   if(!force&&key===hudC.k)return;hudC.k=key;
   updWheel(P.el,P.build,'el',ch||phase==='intro'?null:E.el);
+  if(P.root)document.querySelectorAll('.wheel .nd').forEach(n=>n.classList.toggle('off',n.dataset.e!==P.el));
+  const ab=$('#ab'),on=P.build[P.el]>=SIG_MIN;ab.className='ab'+(on?'':' dim');
+  ab.innerHTML=P.root?`🌱 <b>rooted</b> · 🔒 ${EL[P.el].icon} · 🐢⚔️`:`${EL[P.el].icon} ${SIG[P.el].icon} ${SIGTXT[P.el]}${on?'':' · 🔒4✦'}`;
   const col=EL[P.el].color,th=$('#th'),sl=$('#sl'),pc=(G.sel.int-1)*25;
   sl.style.setProperty('--c',col);th.style.left=pc+'%';th.textContent=G.sel.int;th.style.setProperty('--c',col);th.style.transform=`scale(${.8+.08*G.sel.int})`;
   sl.classList.toggle('off',G.plan.type==='focus');
@@ -885,6 +969,7 @@ function cycleEl(d){
 }
 function doSwap(el){
   if(!S||phase!=='choose'||S.f[0].build[el]<=0)return;
+  if(S.f[0].root){A($('#wh'),[{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'none'}],{duration:180});buzz(30);return}
   if(S.f[0].el!==el){S.f[0].el=el;buzz(8);syncCtl(true)}
 }
 function selectMove(type){
@@ -923,7 +1008,12 @@ function showHelp(){
     <b>💥 ⤓</b><span>huge, slow. beats 🛡️ 🧘 · <span class="r">▼</span> cut down by 🏹 ⚔️</span>
     <b>🛡️ ◈</b><span>beats ⚔️ (riposte) · <span class="r">▼</span> 🏹 💥 go through</span>
     <b>🧘 ◌</b><span>skip & recharge +3⚡ · <span class="r">▼</span> exposed to everything</span>
-    <b>🔥🩸 💧🐌 🌿💚 ⚡💨 🪨🧱</b><span>burn · slow regen · leech · speed · tough</span>
+    <b>🔥🫠</b><span>Melt — burns through 🧱 walls &amp; 🛡️ guards. burn</span>
+    <b>💧🔱</b><span>Pierce — passes 🧱 🛡️ and other shots, can't be reflected. drench</span>
+    <b>⚡🕊️</b><span>Fly — ⚔️💥 dashes go over 🧱 and 🏹. fast</span>
+    <b>🌿🌱</b><span>Root — hit locks their element next turn &amp; slows their dash. leech</span>
+    <b>🪨🧱</b><span>Wall — 🛡️ raises a wall for 2 turns: blocks 🏹⚔️💥. tough</span>
+    <b>🔒</b><span>abilities unlock at 4✦ in that element; stronger with more</span>
     <b>▲ ▼</b><span>your element beats theirs <span class="g">×1.6</span> · loses <span class="r">×0.4</span>. read their habits (history under bars)</span></div></div></div>`;
 }
 function finish(){
@@ -978,6 +1068,7 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('visibilitychange',()=>{lastTs=performance.now()});
 renderBuild();
+window.__g={G,renderBuild,get S(){return S},get phase(){return phase}};
 }
 </script>
 </body>
