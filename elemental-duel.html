@@ -6,106 +6,94 @@
 <title>Elemental Duel</title>
 <style>
 :root{
-  --bg:#0d1020; --bg2:#151a33; --card:#1b2142; --card2:#232a52; --line:#33396a;
-  --text:#e8ebff; --dim:#9aa3d6; --good:#5ee6a0; --bad:#ff6b7d; --warn:#ffd166; --accent:#8b7bff;
-  --fire:#ff7043; --nature:#66bb6a; --stone:#c2a77d; --storm:#fdd835; --water:#42a5f5;
+  --bg:#0b0e1d; --bg2:#141936; --card:#1a2040; --card2:#232a55; --line:#343b70;
+  --text:#eef0ff; --dim:#8f98cf; --good:#5ee6a0; --bad:#ff6b7d; --warn:#ffd166; --accent:#8b7bff;
 }
-*{box-sizing:border-box}
-html,body{margin:0}
-body{
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--text);
-  background:radial-gradient(1200px 700px at 50% -10%,#232a63 0%,var(--bg) 60%) fixed; min-height:100vh;
-}
-.wrap{max-width:980px;margin:0 auto;padding:16px}
-h1{margin:0;font-size:1.5rem;letter-spacing:.04em}
-h1 span{color:var(--accent)}
-h2{margin:0 0 4px;font-size:1.15rem}
-h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:#0b0e1d}html,body{margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--text);
+  background:radial-gradient(900px 600px at 50% -10%,#262e6e 0%,var(--bg) 65%) fixed;min-height:100vh;user-select:none}
+.wrap{max-width:520px;margin:0 auto;padding:12px 12px 40px}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+button:disabled{cursor:not-allowed}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.logo{font-weight:900;letter-spacing:.12em;font-size:.95rem}
 .ladder{display:flex;gap:6px}
-.ladder i{width:26px;height:8px;border-radius:4px;background:var(--line)}
-.ladder i.done{background:var(--good)} .ladder i.cur{background:var(--warn)}
-.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
-.grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:12px}
-@media(max-width:760px){.grid2{grid-template-columns:1fr}}
-.dim{color:var(--dim)} .small{font-size:.82rem}
-button{font:inherit;color:inherit;cursor:pointer}
-.btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 18px;font-weight:700;letter-spacing:.03em}
-.btn:disabled{opacity:.4;cursor:not-allowed}
-.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text);font-weight:500}
-.btn.big{width:100%;padding:13px;font-size:1.05rem}
-details summary{cursor:pointer;color:var(--dim)}
-details p{margin:8px 0 0;line-height:1.5}
-
-/* build screen */
-.brow{display:grid;grid-template-columns:120px 1fr 62px 54px 46px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #ffffff10}
-.brow:last-child{border:0}
-.brow .nm{cursor:pointer;font-weight:600;display:flex;gap:6px;align-items:center}
-.brow .nm.focus{color:#fff;text-shadow:0 0 12px currentColor}
-.stepper{display:flex;align-items:center;gap:6px}
-.stepper button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--card2);font-weight:700}
-.stepper button:disabled{opacity:.3}
-.stepper b{min-width:24px;text-align:center}
-.pbar{height:9px;background:#0006;border-radius:5px;overflow:hidden}
-.pbar i{display:block;height:100%;border-radius:5px;transition:width .25s}
-.stat{font-size:.8rem;text-align:right;color:var(--dim)} .stat b{color:var(--text)}
-.rank{font-size:.7rem;color:var(--dim)}
-.cols{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-.chip{border:1px solid var(--line);background:var(--card2);border-radius:999px;padding:5px 11px;font-size:.85rem}
-.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.chip:disabled{opacity:.35;cursor:not-allowed}
-.pointsleft{font-size:1.4rem;font-weight:800}
-.pointsleft.zero{color:var(--good)}
-@media(max-width:520px){.brow{grid-template-columns:92px 1fr 48px;} .brow .s2,.brow .s3{display:none}}
-
+.ladder span{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:1rem;background:var(--card);border:2px solid var(--line);filter:grayscale(1) opacity(.5)}
+.ladder span.done{filter:none;border-color:var(--good)} .ladder span.cur{filter:none;border-color:var(--warn);box-shadow:0 0 10px var(--warn)}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:18px;padding:12px;margin-bottom:10px}
+.dim{color:var(--dim)}
+.row{display:flex;align-items:center;gap:8px}
+.sp{flex:1}
+.orb{--c:#fff;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;
+  background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 55%,#fff 0%),color-mix(in srgb,var(--c) 18%,#000) 75%);
+  border:2px solid var(--c);box-shadow:0 0 14px -3px var(--c);flex:none}
+.orb.big{width:84px;height:84px;font-size:2.6rem}
+.avatar{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;font-size:2rem;background:#0006;border:2px solid var(--line);flex:none}
+/* bars */
+.bar{flex:1;height:16px;border-radius:9px;background:#0008;overflow:hidden;position:relative}
+.bar i{display:block;height:100%;border-radius:9px;transition:width .5s}
+.bar.hp i{background:linear-gradient(90deg,#d9435a,#ff8a6b)} .bar.hp.you i{background:linear-gradient(90deg,#2ec27e,#7bf3b9)}
+.bar b{position:absolute;inset:0;display:grid;place-items:center;font-size:.72rem;text-shadow:0 1px 2px #000}
+.pips{display:flex;gap:3px} .pips i{width:15px;height:10px;border-radius:3px;background:#0008}
+.pips i.on{background:var(--warn);box-shadow:0 0 6px #ffd16688}
+.hist{display:flex;gap:2px;font-size:.95rem;min-height:1.3rem}
+.tag{display:inline-flex;gap:3px;align-items:center;background:#0006;border-radius:8px;padding:2px 7px;font-size:.78rem;white-space:nowrap}
+.stars{color:var(--warn);letter-spacing:-1px;font-size:.7rem}
+.fighter{display:flex;flex-direction:column;gap:7px}
+/* wheel */
+.wheel{display:block;width:100%;max-width:340px;margin:0 auto;touch-action:manipulation}
+.wheel g[data-a]{cursor:pointer}
+.wheel .n{transition:transform .12s;transform-box:fill-box;transform-origin:center}
+.wheel g[data-a]:active .n{transform:scale(.92)}
+/* build */
+.brow{display:grid;grid-template-columns:44px 1fr;gap:6px 10px;align-items:center;padding:6px 0}
+.step{display:flex;align-items:center;gap:6px}
+.step button{width:34px;height:34px;border-radius:10px;background:var(--card2);border:1px solid var(--line);font-size:1.1rem;font-weight:800}
+.step button:disabled{opacity:.25}
+.step .bar{height:12px}
+.step b{width:26px;text-align:center}
+.stats{display:flex;gap:6px;font-size:.78rem;grid-column:2;margin-top:-2px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{min-width:38px;height:36px;padding:0 7px;font-size:.85rem;border-radius:12px;background:var(--card2);border:1px solid var(--line);font-size:1rem;display:grid;place-items:center}
+.chip.on{background:var(--accent);border-color:var(--accent)}
+.chip:disabled{opacity:.3}
+.left{font-weight:900;font-size:1.3rem} .left.ok{color:var(--good)}
+.go{width:100%;height:54px;border-radius:16px;background:linear-gradient(180deg,#9b8cff,#6d5cf0);font-size:1.6rem;font-weight:800;box-shadow:0 6px 18px -6px #6d5cf0}
+.go:disabled{opacity:.35;box-shadow:none}
 /* battle */
-.fighter{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center}
-.fname{font-weight:800}
-.hpbar{height:16px;background:#0007;border-radius:8px;overflow:hidden;position:relative}
-.hpbar i{display:block;height:100%;background:linear-gradient(90deg,#d9435a,#ff8a6b);transition:width .5s}
-.hpbar.you i{background:linear-gradient(90deg,#2ec27e,#6ef0b0)}
-.hpnum{font-variant-numeric:tabular-nums;font-weight:700}
-.pips{display:flex;gap:3px}
-.pips i{width:16px;height:9px;border-radius:3px;background:#0007}
-.pips i.on{background:var(--warn)}
-.hist{display:flex;gap:3px;font-size:1.05rem;min-height:1.4rem}
-.hist span{opacity:.9}
-.mini{display:flex;gap:6px;flex-wrap:wrap;font-size:.78rem;color:var(--dim)}
-.mini span{background:#0005;border-radius:6px;padding:2px 6px}
-.arena{text-align:center;min-height:104px;display:flex;flex-direction:column;justify-content:center;gap:6px}
-.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
-.mv{background:#0004;border-radius:10px;padding:8px;font-size:.88rem}
-.mv .big{font-size:1.7rem;display:block}
-.mv.hit{animation:shake .4s}
-@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
-.rel{font-weight:700;color:var(--warn)}
-.ecards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-@media(max-width:560px){.ecards{grid-template-columns:repeat(5,1fr);gap:4px}.ecard .rl{display:none}}
-.ecard{border:2px solid var(--line);border-radius:12px;background:var(--card2);padding:8px 4px;text-align:center;transition:transform .1s}
-.ecard:hover:not(:disabled){transform:translateY(-2px)}
-.ecard.sel{border-color:var(--c);box-shadow:0 0 18px -2px var(--c);background:#2c3466}
-.ecard .ic{font-size:1.7rem;display:block}
-.ecard b{display:block;font-size:.85rem}
-.ecard .pw{font-size:.74rem;color:var(--dim)}
-.ecard .rl{font-size:.7rem;margin-top:3px;color:var(--dim);line-height:1.35}
-.ecard:disabled{opacity:.3;cursor:not-allowed}
-.sum{background:#0004;border-radius:10px;padding:9px 11px;font-size:.88rem;line-height:1.6;margin:10px 0}
-.sum b{color:var(--warn)}
-.log{max-height:190px;overflow:auto;font-size:.82rem;line-height:1.55;color:var(--dim)}
-.log div{padding:2px 0;border-bottom:1px solid #ffffff0a}
-.log .t{color:var(--text);font-weight:700}
-.modal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
-.modal .card{max-width:430px;text-align:center;margin:0}
-.modal h2{font-size:1.6rem}
-.formdesc{font-size:.8rem;color:var(--dim);min-height:1.2em}
+.clash{display:grid;grid-template-columns:1fr 54px 1fr;align-items:start;text-align:center;min-height:150px}
+.clash .side{display:flex;flex-direction:column;align-items:center;gap:6px}
+.mid{align-self:center;font-size:2.2rem;font-weight:900}
+.mid.adv{color:var(--good)} .mid.res{color:var(--bad)} .mid.same{color:var(--dim)}
+.dmg{font-size:1.5rem;font-weight:900;color:var(--bad);animation:pop .5s}
+.dmg.z{color:var(--dim);font-size:1.1rem}
+@keyframes pop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
+.orb.hit{animation:shake .4s}
+@keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.sub{font-size:.85rem;color:var(--dim);min-height:1.2em}
+.int{width:54px;height:54px;border-radius:50%;background:var(--card2);border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.int .d{font-size:.55rem;letter-spacing:1px;color:var(--text)} .int .c{font-size:.7rem;color:var(--warn)}
+.int.on{border-color:var(--c,#fff);background:#2e3670;box-shadow:0 0 12px -2px var(--c,#fff)}
+.int:disabled{opacity:.25}
+.fbtn{flex:1;height:48px;border-radius:14px;background:var(--card2);border:2px solid var(--line);font-size:1.4rem;display:grid;place-items:center}
+.fbtn.on{border-color:var(--accent);background:#313a7c}
+.fbtn:disabled{opacity:.25}
+.sum{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:10px 0;font-size:.95rem}
+.sum .tag{font-size:.95rem;padding:4px 9px}
+.g{color:var(--good)} .r{color:var(--bad)} .w{color:var(--warn)}
+.log{display:flex;flex-direction:column;gap:3px;font-size:.88rem}
+.log div{display:flex;justify-content:space-between;gap:8px;background:#0004;border-radius:8px;padding:3px 8px}
+.modal{position:fixed;inset:0;background:#000c;display:grid;place-items:center;padding:16px;z-index:10}
+.modal .card{text-align:center;width:min(340px,100%);margin:0;padding:22px}
+.modal .em{font-size:4.2rem}
+details summary{cursor:pointer;font-size:.9rem;list-style:none;text-align:center;color:var(--dim)}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:.82rem;margin-top:8px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>ELEMENTAL <span>DUEL</span></h1>
-    <div class="ladder" id="ladder"></div>
-  </header>
+  <header><div class="logo">🔥🌿🪨⚡💧</div><div class="ladder" id="ladder"></div></header>
   <div id="app"></div>
 </div>
 <div id="modal"></div>
@@ -235,220 +223,195 @@ function aiChoose(E,P,prof,rng=Math.random){
 if(typeof module!=='undefined') module.exports={ORDER,mkBuild,mkFighter,resolve,endTurn,aiChoose,costOf,power,beats,POOL,MAXHP,rng:null};
 //#UI
 if(typeof document!=='undefined'){
+const FI={strike:'⚔️',pierce:'🏹',surge:'💥',ward:'🛡️',focus:'🧘'};
+const FCAP={strike:'⚔️ ×1',pierce:'🏹 ×¾ · <span class="r">▼</span> softer · 🛡½',surge:'💥 ×1.5 · ⚡+1 · <span class="r">▼</span> +25% hurt',ward:'🛡️ <span class="g">▲</span>×1.5 <span class="r">▼</span>×½ · ↩30%',focus:'🧘 ⚡+4 · 💔 +25%'};
 const ENEMIES=[
-  {name:'Ember Acolyte',title:'Apprentice of the Flame',blurb:'A devoted specialist. Hits hard, but repeats himself. Learn his rhythm.',
-   build:mkBuild({fire:15,water:5}),ai:{skill:.2,predict:'last',habit:.5}},
-  {name:'Tidecaller Mara',title:'Duelist of the Deep',blurb:'Two elements, balanced. Reads your last move now and then.',
-   build:mkBuild({water:10,stone:10}),ai:{skill:.4,predict:'last',habit:.2}},
-  {name:'Grove Warden',title:'Keeper of the Old Wood',blurb:'Leans on Nature but swaps to Storm when you adapt.',
-   build:mkBuild({nature:12,storm:8}),ai:{skill:.5,predict:'freq',habit:.2}},
-  {name:'Stormweaver Kei',title:'Generalist of Many Winds',blurb:'Has a little of everything, so there is always a counter to your move. Individually weak, though.',
-   build:mkBuild({fire:4,nature:4,stone:4,storm:4,water:4}),ai:{skill:.65,predict:'freq',habit:0}},
-  {name:'The Prism Sage',title:'Final Trial',blurb:'Hybrid build, sharp mind. It studies your habits and counters them.',
-   build:mkBuild({storm:8,fire:6,stone:6}),ai:{skill:.8,predict:'freq',habit:.05}}
+  {av:'🐲',name:'Ember',blurb:'',build:mkBuild({fire:15,water:5}),ai:{skill:.2,predict:'last',habit:.5}},
+  {av:'🧜‍♀️',name:'Mara',build:mkBuild({water:10,stone:10}),ai:{skill:.4,predict:'last',habit:.2}},
+  {av:'🦌',name:'Warden',build:mkBuild({nature:12,storm:8}),ai:{skill:.5,predict:'freq',habit:.2}},
+  {av:'🦅',name:'Kei',build:mkBuild({fire:4,nature:4,stone:4,storm:4,water:4}),ai:{skill:.65,predict:'freq',habit:0}},
+  {av:'🔮',name:'Sage',build:mkBuild({storm:8,fire:6,stone:6}),ai:{skill:.8,predict:'freq',habit:.05}}
 ];
 const $=s=>document.querySelector(s);
-const G={level:0,build:mkBuild({fire:10,water:10}),focus:'fire',P:null,E:null,turn:1,sel:{el:'fire',int:3,form:'strike'},last:null,log:[],over:false,wins:0};
+const G={level:0,build:mkBuild({fire:10,water:10}),focus:'fire',P:null,E:null,turn:1,sel:{el:'fire',int:3,form:'strike'},last:null,hist:[],over:false};
 
-function pts(b){return ORDER.reduce((a,e)=>a+b[e],0)}
-function icons(h){return h.slice(-8).map(x=>`<span title="${x?EL[x].name:'Focus'}">${x?EL[x].icon:'💤'}</span>`).join('')}
-function ladder(){
-  $('#ladder').innerHTML=ENEMIES.map((_,i)=>`<i class="${i<G.level?'done':i===G.level?'cur':''}"></i>`).join('');
-}
-function relText(e){
-  const strong=ORDER.filter(x=>x!==e&&beats(e,x)).map(x=>EL[x].icon).join('');
-  const weak=ORDER.filter(x=>x!==e&&beats(x,e)).map(x=>EL[x].icon).join('');
-  return `beats ${strong}<br>weak to ${weak}`;
-}
-function buildBars(b){
-  return ORDER.filter(e=>b[e]>0).map(e=>`<span style="color:${EL[e].color}">${EL[e].icon} ${b[e]} <small>${rank(b[e])}</small></span>`).join('');
-}
+const pts=b=>ORDER.reduce((a,e)=>a+b[e],0);
+const icons=h=>h.slice(-8).map(x=>`<span>${x?EL[x].icon:'💤'}</span>`).join('');
+const stars=p=>{const n=p>=16?4:p>=10?3:p>=5?2:p>=1?1:0;return'★'.repeat(n)+'☆'.repeat(4-n)};
+const dots=n=>'●'.repeat(n);
+const orb=(e,cls='')=>`<div class="orb ${cls}" style="--c:${EL[e].color}">${EL[e].icon}</div>`;
+function ladder(){$('#ladder').innerHTML=ENEMIES.map((e,i)=>`<span class="${i<G.level?'done':i===G.level?'cur':''}">${e.av}</span>`).join('')}
 
-/* ---------- BUILD SCREEN ---------- */
+/* element wheel: arrows point from the winner to the loser */
+function wheel(sel,act,build){
+  const S=300,c=S/2,R=104,r=29;
+  const pos=ORDER.map((_,i)=>{const a=(-90+72*i)*Math.PI/180;return[c+R*Math.cos(a),c+R*Math.sin(a)]});
+  const si=sel==null?-1:ORDER.indexOf(sel);
+  const edges=[];
+  for(let i=0;i<5;i++)for(const k of[1,2]){
+    const j=(i+k)%5,[x1,y1]=pos[i],[x2,y2]=pos[j];
+    const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L;
+    const cls=si<0?'d':i===si?'g':j===si?'r':'d';
+    edges.push({cls,l:`<line x1="${x1+ux*(r+3)}" y1="${y1+uy*(r+3)}" x2="${x2-ux*(r+9)}" y2="${y2-uy*(r+9)}" stroke="${{g:'#5ee6a0',r:'#ff6b7d',d:'#5b6399'}[cls]}" stroke-width="${cls==='d'?1.5:3.5}" opacity="${cls==='d'?(si<0?.7:.35):1}" marker-end="url(#m${cls})"/>`});
+  }
+  const arrows=edges.filter(e=>e.cls==='d').concat(edges.filter(e=>e.cls!=='d')).map(e=>e.l).join('');
+  const nodes=ORDER.map((e,i)=>{
+    const [x,y]=pos[i],p=build[e],on=!act||p>0,isSel=i===si;
+    return`<g ${on&&act?`data-a="${act}" data-e="${e}"`:''} opacity="${on?1:.3}">
+      <g class="n"><circle cx="${x}" cy="${y}" r="${r}" fill="${EL[e].color}" fill-opacity=".22" stroke="${EL[e].color}" stroke-width="${isSel?5:2}" ${isSel?`style="filter:drop-shadow(0 0 8px ${EL[e].color})"`:''}/>
+      <text x="${x}" y="${y+9}" text-anchor="middle" font-size="27">${EL[e].icon}</text>
+      <circle cx="${x+20}" cy="${y+20}" r="11" fill="#0b0e1d" stroke="${EL[e].color}" stroke-width="1.5"/>
+      <text x="${x+20}" y="${y+24}" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">${p}</text></g></g>`}).join('');
+  const mk=(id,col)=>`<marker id="m${id}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${col}"/></marker>`;
+  return`<svg class="wheel" viewBox="0 0 ${S} ${S}"><defs>${mk('g','#5ee6a0')}${mk('r','#ff6b7d')}${mk('d','#5b6399')}</defs>${arrows}${nodes}
+    <text x="${c}" y="${c-4}" text-anchor="middle" font-size="12" fill="#5ee6a0">▲ →</text><text x="${c}" y="${c+14}" text-anchor="middle" font-size="12" fill="#ff6b7d">▼ ←</text></svg>`;
+}
+const brain=a=>`🧠<span class="stars">${a.skill<.35?'★☆☆':a.skill<.6?'★★☆':'★★★'}</span>${a.habit>.3?' 🔁':''}`;
+const miniBuild=b=>ORDER.filter(e=>b[e]>0).map(e=>`<span class="tag" style="color:${EL[e].color}">${EL[e].icon}<b>${b[e]}</b></span>`).join('');
+
+/* ---------- BUILD ---------- */
 function renderBuild(){
   ladder();
-  const en=ENEMIES[G.level], left=POOL-pts(G.build);
+  const en=ENEMIES[G.level],left=POOL-pts(G.build);
   $('#app').innerHTML=`
-  <div class="card">
-    <details ${G.level===0?'open':''}><summary>How to play</summary>
-    <p><b>Elements form a cycle:</b> each element beats the two after it and loses to the two before it
-    (🔥→🌿🪨 · 🌿→🪨⚡ · 🪨→⚡💧 · ⚡→💧🔥 · 💧→🔥🌿). Every turn both duelists pick <b>an element, an intensity (1–5) and a form</b> in secret, then both strike at once.
-    Intensity costs <b>energy</b> (you regain ${REGEN} a turn, max ${MAXEN}), so you can't go all out forever.
-    Before the duel you spend <b>${POOL} training points</b>. Mastery is convex: the more points in one element, the stronger, crit-prone and cheaper it gets,
-    but spread thin and every element is weak. Specialists are sharp but readable; generalists are flexible but soft.</p></details>
+  <div class="card row" style="align-items:center">
+    <div class="avatar">${en.av}</div>
+    <div class="fighter sp"><div class="row"><span class="dim">${G.level+1}/${ENEMIES.length}</span><b>${en.name}</b><span class="sp"></span><span class="tag">${brain(en.ai)}</span></div>
+      <div class="chips">${miniBuild(en.build)}</div></div>
   </div>
-  <div class="grid2">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><h2>Forge your affinity</h2><div class="dim small">Click an element name to set the preset focus.</div></div>
-        <div class="pointsleft ${left===0?'zero':''}">${left}<span class="dim small"> / ${POOL} left</span></div>
-      </div>
-      <div class="cols">
-        <button class="chip" data-a="preset" data-v="1">Specialist</button>
-        <button class="chip" data-a="preset" data-v="2">Duelist 10/10</button>
-        <button class="chip" data-a="preset" data-v="3">Tri-weave 7/7/6</button>
-        <button class="chip" data-a="preset" data-v="5">Balanced 4×5</button>
-        <button class="chip" data-a="preset" data-v="0">Clear</button>
-      </div>
-      ${ORDER.map(e=>{const p=G.build[e];return`
-      <div class="brow">
-        <div class="nm ${G.focus===e?'focus':''}" data-a="focus" data-e="${e}" style="color:${EL[e].color}">${EL[e].icon} ${EL[e].name}</div>
-        <div><div class="stepper">
-          <button data-a="dec" data-e="${e}" ${p<=0?'disabled':''}>−</button><b>${p}</b>
-          <button data-a="inc" data-e="${e}" ${left<=0?'disabled':''}>+</button>
-          <div class="pbar" style="flex:1"><i style="width:${p/POOL*100}%;background:${EL[e].color}"></i></div></div>
-          <div class="rank">${rank(p)}</div></div>
-        <div class="stat">power<br><b>×${power(p).toFixed(2)}</b></div>
-        <div class="stat s2">crit<br><b>${Math.round(critChance(p)*100)}%</b></div>
-        <div class="stat s3">cost<br><b>${discount(p)?'−'+discount(p):'—'}</b></div>
-      </div>`}).join('')}
-      <div class="dim small" style="margin-top:8px">Power multiplies damage and ward strength. Cost: ≥8 pts saves 1 energy, ≥16 saves 2. Repeating an element builds Resonance, bigger with mastery.</div>
-    </div>
-    <div class="card">
-      <h3>Opponent ${G.level+1} / ${ENEMIES.length}</h3>
-      <h2>${en.name}</h2><div class="dim small">${en.title}</div>
-      <p class="small" style="line-height:1.5">${en.blurb}</p>
-      <div class="mini" style="margin-bottom:10px">${buildBars(en.build)}</div>
-      <button class="btn big" data-a="start" ${left!==0?'disabled':''}>${left!==0?`Spend ${left} more point${left>1?'s':''}`:'Begin duel ⚔'}</button>
-    </div>
-  </div>`;
+  <div class="card">
+    <div class="row" style="margin-bottom:6px"><span class="left ${left===0?'ok':''}">✦ ${left}</span><span class="sp"></span>
+      <div class="chips">
+        <button class="chip" data-a="preset" data-v="1" title="20">◉</button>
+        <button class="chip" data-a="preset" data-v="2" title="10/10">◉◉</button>
+        <button class="chip" data-a="preset" data-v="3" title="7/7/6">◉◉◉</button>
+        <button class="chip" data-a="preset" data-v="5" title="4×5">◎◎◎◎◎</button>
+        <button class="chip" data-a="preset" data-v="0" title="clear">↺</button></div></div>
+    ${wheel(G.focus,'focus',G.build)}
+    ${ORDER.map(e=>{const p=G.build[e];return`
+    <div class="brow">
+      ${orb(e)}
+      <div class="step"><button data-a="dec" data-e="${e}" ${p<=0?'disabled':''}>−</button>
+        <div class="bar"><i style="width:${p/POOL*100}%;background:${EL[e].color}"></i></div>
+        <b>${p}</b><button data-a="inc" data-e="${e}" ${left<=0?'disabled':''}>+</button></div>
+      <div class="stats"><span class="tag">⚔×${power(p).toFixed(1)}</span><span class="tag">🎯${Math.round(critChance(p)*100)}%</span><span class="tag">⚡${discount(p)?'−'+discount(p):'0'}</span><span class="stars">${stars(p)}</span></div>
+    </div>`}).join('')}
+  </div>
+  <details class="card"><summary>❔</summary><div class="legend">
+    <span>❤️ HP</span><span>⚡ energy</span><span>⚔ power</span><span>🎯 crit</span>
+    <span>✦ points</span><span>🔁 repeat bonus</span><span class="g">▲ you counter</span><span class="r">▼ you're countered</span>
+    <span>⚔️ strike</span><span>🏹 pierce</span><span>💥 surge</span><span>🛡️ ward</span><span>🧘 focus</span><span>🧠 foe skill</span></div></details>
+  <button class="go" data-a="start" ${left!==0?'disabled':''}>▶</button>`;
 }
 function preset(n){
-  n=+n; const b=mkBuild({}); const o=ORDER.indexOf(G.focus);
-  const splits={1:[20],2:[10,10],3:[7,7,6],5:[4,4,4,4,4],0:[]}[n];
-  splits.forEach((v,i)=>b[ORDER[(o+i)%5]]=v);
-  G.build=b; renderBuild();
+  n=+n;const b=mkBuild({}),o=ORDER.indexOf(G.focus);
+  ({1:[20],2:[10,10],3:[7,7,6],5:[4,4,4,4,4],0:[]})[n].forEach((v,i)=>b[ORDER[(o+i)%5]]=v);
+  G.build=b;renderBuild();
 }
 
 /* ---------- BATTLE ---------- */
 function startDuel(){
   const en=ENEMIES[G.level];
-  G.P=mkFighter('You',{...G.build}); G.E=mkFighter(en.name,{...en.build});
-  G.turn=1; G.log=[]; G.over=false; G.last=null;
-  const first=ORDER.reduce((a,e)=>G.build[e]>G.build[a]?e:a,ORDER[0]);
-  G.sel={el:first,int:3,form:'strike'};
-  addLog(`<span class="t">Duel begins vs ${en.name}.</span>`);
+  G.P=mkFighter('You',{...G.build});G.E=mkFighter(en.name,{...en.build});
+  G.turn=1;G.hist=[];G.over=false;G.last=null;
+  G.sel={el:ORDER.reduce((a,e)=>G.build[e]>G.build[a]?e:a,ORDER[0]),int:3,form:'strike'};
   renderBattle();
 }
-function addLog(h){G.log.unshift(`<div>${h}</div>`)}
-function curMove(){return G.sel.form==='focus'?{form:'focus',el:null,int:0}:{...G.sel}}
+const curMove=()=>G.sel.form==='focus'?{form:'focus',el:null,int:0}:{...G.sel};
 function fixSel(){
   const s=G.sel;
   if(s.form!=='focus'){
-    if(G.P.build[s.el]<=0) s.el=ORDER.find(e=>G.P.build[e]>0);
-    while(costOf(G.P,curMove())>G.P.energy&&s.int>1) s.int--;
-    if(costOf(G.P,curMove())>G.P.energy) s.form='strike';
-    if(costOf(G.P,curMove())>G.P.energy) s.form='focus';
+    if(G.P.build[s.el]<=0)s.el=ORDER.find(e=>G.P.build[e]>0);
+    while(costOf(G.P,curMove())>G.P.energy&&s.int>1)s.int--;
+    if(costOf(G.P,curMove())>G.P.energy)s.form='strike';
+    if(costOf(G.P,curMove())>G.P.energy)s.form='focus';
   }
 }
-function pips(n){return`<div class="pips">${Array.from({length:MAXEN},(_,i)=>`<i class="${i<n?'on':''}"></i>`).join('')}</div>`}
-function fighterPanel(f,you){
-  return`<div class="fighter">
-    <div class="fname">${you?'🧙 You':'👹 '+f.name}</div><div class="hpnum">${Math.max(0,f.hp)} / ${MAXHP} HP</div>
-    <div class="hpbar ${you?'you':''}" style="grid-column:1/-1"><i style="width:${Math.max(0,f.hp)}%"></i></div>
-    <div>${pips(f.energy)}<div class="dim small">Energy ${f.energy}/${MAXEN}</div></div>
-    <div class="hist" title="recent moves">${icons(f.hist)}</div>
-    <div class="mini" style="grid-column:1/-1">${buildBars(f.build)}</div>
-  </div>`;
+const pips=n=>`<div class="pips">${Array.from({length:MAXEN},(_,i)=>`<i class="${i<n?'on':''}"></i>`).join('')}</div>`;
+function fighterPanel(f,you,av){
+  return`<div class="card row" style="align-items:center">
+    <div class="avatar">${av}</div>
+    <div class="fighter sp">
+      <div class="row"><span>❤️</span><div class="bar hp ${you?'you':''}"><i style="width:${Math.max(0,f.hp)}%"></i><b>${Math.max(0,f.hp)}</b></div></div>
+      <div class="row">${pips(f.energy)}<span class="sp"></span><div class="hist">${icons(f.hist)}</div></div>
+    </div></div>`;
 }
-function estimate(f,m){
-  const r=k=>Math.round(attackDmg(f,m,k,false));
-  return{adv:r('adv'),same:r('same'),res:r('res'),open:r('open')};
+function estimate(f,m){const r=k=>Math.round(attackDmg(f,m,k,false));return{adv:r('adv'),same:r('same'),res:r('res')}}
+function side(m,s,took,absorbed,crit){
+  const body=m.form==='focus'?`<div class="orb big" style="--c:#8f98cf">🧘</div>`:orb(m.el,'big'+(took>0?' hit':''));
+  return`<div class="side">${body}
+    <div>${FI[m.form]}${m.form==='focus'?'':' <span class="dim" style="font-size:.7rem">'+dots(m.int)+'</span>'}${crit?' ✨':''}</div>
+    <div class="${took>0?'dmg':'dmg z'}">${took>0?'−'+took:'0'}</div>
+    <div class="sub">${absorbed>0?'🛡'+Math.round(absorbed):''}${s&&s.streak>1?' 🔁':''}</div></div>`;
 }
 function renderArena(){
   const L=G.last;
-  if(!L) return `<div class="dim">Choose your element, intensity and form, then unleash.</div>`;
-  const mv=(m,s,who,hitFlag)=>{
-    if(m.form==='focus') return `<div class="mv ${hitFlag?'hit':''}"><span class="big">💤</span>${who}<br>Focus (+4 energy)</div>`;
-    return `<div class="mv ${hitFlag?'hit':''}"><span class="big">${EL[m.el].icon}</span>${who}<br>${EL[m.el].name} · I${m.int} · ${FORMS[m.form].name}<br>
-      ${m.form==='ward'?`<small class="dim">shield ${Math.round(s.shield)}</small>`:''}</div>`;
-  };
-  const phrase=(a,b,sa)=>{
-    if(!a.el) return''; if(!b.el) return'';
-    if(sa.rel==='adv') return `${EL[a.el].name} overpowers ${EL[b.el].name}`;
-    if(sa.rel==='res') return `${EL[a.el].name} is resisted by ${EL[b.el].name}`;
-    return `${EL[a.el].name} clashes with ${EL[b.el].name}`;
-  };
-  const pl=phrase(L.mp,L.me,L.r.sp);
-  return `<div class="vs">${mv(L.mp,L.r.sp,'You',L.r.dP>0)}<div class="rel">VS</div>${mv(L.me,L.r.se,G.E.name,L.r.dE>0)}</div>
-  <div class="rel">${pl}</div>
-  <div class="small">You dealt <b style="color:var(--good)">${L.r.dE}</b> · took <b style="color:var(--bad)">${L.r.dP}</b></div>`;
+  if(!L)return`<div class="clash"><div class="side">${G.P?'':''}<div class="orb big" style="--c:#8f98cf;opacity:.4">❔</div></div><div class="mid same">⚔</div><div class="side"><div class="orb big" style="--c:#8f98cf;opacity:.4">❔</div></div></div>`;
+  const rel=L.r.sp.rel;
+  const sym=rel==='adv'?['▲','adv']:rel==='res'?['▼','res']:rel==='open'?['🎯','adv']:rel===null?['🎯','res']:['＝','same'];
+  return`<div class="clash">${side(L.mp,L.r.sp,L.r.dP,L.r.toP.absorbed,L.r.sp.crit)}<div class="mid ${sym[1]}">${sym[0]}</div>${side(L.me,L.r.se,L.r.dE,L.r.toE.absorbed,L.r.se.crit)}</div>`;
 }
 function renderBattle(){
-  ladder(); fixSel();
+  ladder();fixSel();
   const P=G.P,E=G.E,s=G.sel,m=curMove(),foc=s.form==='focus';
-  const cost=costOf(P,m), est=foc?null:estimate(P,m);
-  const pp=foc?0:P.build[s.el], sb=foc?1:streakBonus(P,m);
+  const cost=costOf(P,m),est=foc?null:estimate(P,m),pp=foc?0:P.build[s.el],sb=foc?1:streakBonus(P,m);
+  const en=ENEMIES[G.level],col=foc?'#8f98cf':EL[s.el].color;
   $('#app').innerHTML=`
-  <div class="card">${fighterPanel(E,false)}</div>
-  <div class="card arena" id="arena">${renderArena()}</div>
-  <div class="card">${fighterPanel(P,true)}</div>
+  ${fighterPanel(E,false,en.av)}
+  <div class="card" id="arena">${renderArena()}</div>
+  ${fighterPanel(P,true,'🧙')}
   <div class="card">
-    <h3>Element</h3>
-    <div class="ecards">${ORDER.map(e=>{const p=P.build[e];const aff=costOf(P,{el:e,int:1,form:'strike'})<=P.energy;
-      return`<button class="ecard ${s.el===e&&!foc?'sel':''}" style="--c:${EL[e].color}" data-a="el" data-e="${e}" ${p<=0||foc?'disabled':''}>
-        <span class="ic">${EL[e].icon}</span><b>${EL[e].name}</b><span class="pw">×${power(p).toFixed(2)} · ${p}pt</span><div class="rl">${relText(e)}</div></button>`}).join('')}</div>
-    <h3 style="margin-top:12px">Intensity</h3>
-    <div class="cols">${[1,2,3,4,5].map(i=>{const tm=foc?0:costOf(P,{...m,int:i});return`<button class="chip ${s.int===i&&!foc?'on':''}" data-a="int" data-i="${i}" ${foc||tm>P.energy?'disabled':''}>${i} <small>(${foc?'–':tm+'⚡'})</small></button>`}).join('')}</div>
-    <h3 style="margin-top:12px">Form</h3>
-    <div class="cols">${Object.keys(FORMS).map(f=>{const tm=f==='focus'?0:costOf(P,{el:foc?ORDER.find(e=>P.build[e]>0):s.el,int:1,form:f});
-      return`<button class="chip ${s.form===f?'on':''}" data-a="form" data-f="${f}" ${tm>P.energy?'disabled':''}>${FORMS[f].name}</button>`}).join('')}</div>
-    <div class="formdesc">${FORMS[s.form].desc}</div>
-    <div class="sum">${foc?`Recover energy to <b>${Math.min(MAXEN,P.energy+REGEN+4)}</b>. You deal no damage and take +25%.`:
-      `Cost <b>${cost}⚡</b> (left ${P.energy-cost}→${Math.min(MAXEN,P.energy-cost+REGEN)} after regen) · Crit <b>${Math.round(critChance(pp)*100)}%</b>${sb>1?` · Resonance <b>×${sb.toFixed(2)}</b>`:''}<br>
-       Damage if you <b style="color:var(--good)">counter</b> ≈ <b>${est.adv}</b> · even ≈ <b>${est.same}</b> · <b style="color:var(--bad)">countered</b> ≈ <b>${est.res}</b>${s.form==='ward'?` · shield ≈ <b>${Math.round(wardShield(P,m,'same'))}</b> (even)`:''}`}</div>
-    <button class="btn big" data-a="play">${foc?'Focus & recover':'Unleash '+EL[s.el].icon+' '+EL[s.el].name}</button>
+    ${wheel(foc?null:s.el,'el',P.build)}
+    <div class="row" style="justify-content:center;margin:6px 0 10px">${[1,2,3,4,5].map(i=>{const tm=foc?0:costOf(P,{...m,int:i});
+      return`<button class="int ${s.int===i&&!foc?'on':''}" style="--c:${col}" data-a="int" data-i="${i}" ${foc||tm>P.energy?'disabled':''}><span class="d">${dots(i)}</span><span class="c">⚡${foc?'–':tm}</span></button>`}).join('')}</div>
+    <div class="row">${Object.keys(FORMS).map(f=>{const tm=f==='focus'?0:costOf(P,{el:foc?ORDER.find(e=>P.build[e]>0):s.el,int:1,form:f});
+      return`<button class="fbtn ${s.form===f?'on':''}" data-a="form" data-f="${f}" ${tm>P.energy?'disabled':''}>${FI[f]}</button>`}).join('')}</div>
+    <div class="sub" style="text-align:center;margin-top:6px">${FCAP[s.form]}</div>
+    <div class="sum">${foc?`<span class="tag">⚡ → ${Math.min(MAXEN,P.energy+REGEN+4)}</span>`:
+      `<span class="tag">⚡${cost}</span><span class="tag">🎯${Math.round(critChance(pp)*100)}%</span>${sb>1?`<span class="tag">🔁×${sb.toFixed(1)}</span>`:''}
+       <span class="tag g">▲${est.adv}</span><span class="tag">＝${est.same}</span><span class="tag r">▼${est.res}</span>${s.form==='ward'?`<span class="tag">🛡${Math.round(wardShield(P,m,'same'))}</span>`:''}`}</div>
+    <button class="go" data-a="play" style="${foc?'':`background:linear-gradient(180deg,${col},color-mix(in srgb,${col} 55%,#000))`}">${foc?'🧘':EL[s.el].icon+' '+FI[s.form]}</button>
   </div>
-  <div class="card"><h3>Turn ${G.turn} · battle log</h3><div class="log">${G.log.join('')}</div></div>`;
+  <div class="card"><div class="dim" style="font-size:.75rem;margin-bottom:6px">⏱ ${G.turn}</div><div class="log">${G.hist.slice(-6).reverse().join('')||'<span class="dim">—</span>'}</div></div>`;
 }
-function describe(who,m,s,toSelf,r){
-  if(m.form==='focus') return `${who} focuses.`;
-  let t=`${who}: ${EL[m.el].icon} ${EL[m.el].name} I${m.int} ${FORMS[m.form].name}`;
-  if(s.streak>1) t+=` (resonance ×${s.streak.toFixed(2)})`;
-  if(s.crit) t+=' <b style="color:var(--warn)">CRIT</b>';
-  if(m.form==='ward') t+=` · shield ${Math.round(s.shield)}`;
-  return t;
-}
+function mvStr(m,took){return m.form==='focus'?'🧘':`${EL[m.el].icon}${FI[m.form]}${m.int}`}
 function play(){
-  if(G.over) return;
-  const P=G.P,E=G.E,en=ENEMIES[G.level];
-  const mp=curMove(); if(costOf(P,mp)>P.energy) return;
-  const me=aiChoose(E,P,en.ai);
-  const r=resolve(P,E,mp,me,G.turn);
-  P.hp-=r.dP; E.hp-=r.dE;
-  addLog(`&nbsp;&nbsp;${describe(E.name,me,r.se)} → <b style="color:var(--bad)">${r.dP}</b> dmg${r.toP.absorbed>0?` (your ward blocked ${Math.round(r.toP.absorbed)})`:''}${r.toP.reflect>0?` · reflected ${Math.round(r.toP.reflect)}`:''}`);
-  addLog(`<span class="t">T${G.turn}</span> ${describe('You',mp,r.sp)} → <b style="color:var(--good)">${r.dE}</b> dmg${r.toE.absorbed>0?` (ward blocked ${Math.round(r.toE.absorbed)})`:''}`);
+  if(G.over)return;
+  const P=G.P,E=G.E,en=ENEMIES[G.level],mp=curMove();
+  if(costOf(P,mp)>P.energy)return;
+  const me=aiChoose(E,P,en.ai),r=resolve(P,E,mp,me,G.turn);
+  P.hp-=r.dP;E.hp-=r.dE;
+  G.hist.push(`<div><span>${mvStr(mp)} <span class="g">${r.dE?'→'+r.dE:''}</span></span><span><span class="r">${r.dP?r.dP+'←':''}</span> ${mvStr(me)}</span></div>`);
   G.last={mp,me,r};
-  endTurn(P,mp); endTurn(E,me); G.turn++;
-  if(P.hp<=0||E.hp<=0){ G.over=true; renderBattle(); setTimeout(finish,650); }
-  else renderBattle();
+  endTurn(P,mp);endTurn(E,me);G.turn++;
+  if(P.hp<=0||E.hp<=0){G.over=true;renderBattle();setTimeout(finish,800)}else renderBattle();
 }
 function finish(){
-  const P=G.P,E=G.E; let h,onBtn;
-  if(P.hp<=0&&E.hp<=0) h=`<h2>⚖ Draw</h2><p class="dim">You both fall together. Rematch?</p><button class="btn big" data-a="retry">Rematch</button>`;
-  else if(P.hp<=0) h=`<h2>💀 Defeated</h2><p class="dim">${E.name} outlasted you. Re-forge your affinity and try again.</p><button class="btn big" data-a="retry">Re-forge &amp; retry</button>`;
-  else if(G.level>=ENEMIES.length-1) h=`<h2>🏆 Grand Duelist!</h2><p class="dim">You beat all ${ENEMIES.length} opponents in ${G.turn-1} turns on the last fight.</p><button class="btn big" data-a="restart">Play again</button>`;
-  else h=`<h2>✨ Victory</h2><p class="dim">${E.name} is down with ${P.hp} HP left. Next: <b>${ENEMIES[G.level+1].name}</b>. You may re-allocate your training points.</p><button class="btn big" data-a="next">Next opponent</button>`;
-  $('#modal').innerHTML=`<div class="modal"><div class="card">${h}</div></div>`;
+  const P=G.P,E=G.E;let em,btn,a;
+  if(P.hp<=0&&E.hp<=0){em='⚖️';btn='↻';a='retry'}
+  else if(P.hp<=0){em='💀';btn='↻';a='retry'}
+  else if(G.level>=ENEMIES.length-1){em='🏆';btn='↻';a='restart'}
+  else{em='✨';btn='▶ '+ENEMIES[G.level+1].av;a='next'}
+  $('#modal').innerHTML=`<div class="modal"><div class="card"><div class="em">${em}</div>${P.hp>0&&E.hp<=0?`<div style="margin:6px 0 14px">❤️ ${P.hp}</div>`:'<div style="height:14px"></div>'}<button class="go" data-a="${a}">${btn}</button></div></div>`;
 }
 
-/* ---------- events ---------- */
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-a]'); if(!t||t.disabled) return;
+  const t=ev.target.closest('[data-a]');if(!t||t.disabled)return;
   const a=t.dataset.a;
   if(a==='inc'&&POOL-pts(G.build)>0){G.build[t.dataset.e]++;renderBuild()}
   else if(a==='dec'&&G.build[t.dataset.e]>0){G.build[t.dataset.e]--;renderBuild()}
   else if(a==='focus'){G.focus=t.dataset.e;renderBuild()}
-  else if(a==='preset') preset(t.dataset.v);
-  else if(a==='start'&&pts(G.build)===POOL) startDuel();
+  else if(a==='preset')preset(t.dataset.v);
+  else if(a==='start'&&pts(G.build)===POOL)startDuel();
   else if(a==='el'){G.sel.el=t.dataset.e;if(G.sel.form==='focus')G.sel.form='strike';renderBattle()}
   else if(a==='int'){G.sel.int=+t.dataset.i;renderBattle()}
   else if(a==='form'){G.sel.form=t.dataset.f;renderBattle()}
-  else if(a==='play') play();
+  else if(a==='play')play();
   else if(a==='retry'||a==='next'||a==='restart'){
     $('#modal').innerHTML='';
-    if(a==='next') G.level++; if(a==='restart'){G.level=0;G.build=mkBuild({fire:10,water:10})}
-    renderBuild(); window.scrollTo(0,0);
+    if(a==='next')G.level++;
+    if(a==='restart'){G.level=0;G.build=mkBuild({fire:10,water:10})}
+    renderBuild();window.scrollTo(0,0);
   }
 });
 renderBuild();
