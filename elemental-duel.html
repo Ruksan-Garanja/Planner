@@ -237,7 +237,7 @@ header{margin-bottom:6px;flex:none;gap:8px}
 .go.busy{opacity:.3;pointer-events:none}
 .sl.off{opacity:.25;pointer-events:none}
 .mv{height:58px}
-.ab{display:flex;gap:5px;align-items:center;justify-content:center;font-size:.8rem;min-height:20px;flex:none;color:#fff;white-space:nowrap}
+.ab{display:flex;gap:5px;align-items:center;justify-content:center;font-size:.74rem;min-height:20px;flex:none;color:#fff;white-space:nowrap}
 .ab.dim{opacity:.45}
 </style>
 </head>
@@ -267,7 +267,7 @@ const MOVES={
   bolt:   {icon:'🏹',wind:.38,rec:.30,mult:.85,extra:0,stun:.30},
   rush:   {icon:'⚔️',wind:.12,rec:.55,mult:1.30,extra:0,spd:240,stun:.45},
   slam:   {icon:'💥',wind:.80,rec:.95,mult:2.40,extra:1,spd:160,stun:.80},
-  counter:{icon:'🛡️',wind:.04,win:.70,rec:.70,mult:1.20,extra:0},
+  counter:{icon:'🛡️',wind:.04,win:1.30,rec:.40,mult:1.50,extra:0},
   focus:  {icon:'🧘',chan:.90,rec:.10,extra:0}
 };
 const idx=e=>ORDER.indexOf(e);
@@ -286,7 +286,7 @@ function mkFighter(name,build,side){
     grace:0,burn:null,slow:0,swapCD:0,streak:0,lastEl:null,lastT:-9,slowK:0,root:0,rootNext:0,rootK:0,lastType:null,buf:null,strikeT:0,aiT:.5,plan:null,dg:0};
 }
 function mkSim(P,E){return{walls:[],t:0,f:[P,E],proj:[],ev:[],hitstop:0,lock:0,over:false,winner:-1,manual:true,turn:1,stress:1,hist:[[],[]]}}
-const costOf=(f,type,int,el)=>type==='focus'?0:Math.max(1,int+MOVES[type].extra-discount(f.build[el||f.el]));
+const costOf=(f,type,int,el)=>type==='focus'?0:Math.max(1,int+MOVES[type].extra+(type==='counter'?(f.cStreak||0):0)-discount(f.build[el||f.el]));
 const dashSpd=f=>MOVES[f.cur.type].spd*(f.cur.el==='storm'?1+.15*tr(f,'storm'):1)*(f.root?1-.35*(f.rootK||1):1);
 
 /* returns 1 cast, 2 buffered, 0 refused */
@@ -295,7 +295,7 @@ function act(S,f,type,int,rng=Math.random){
   if(f.state!=='idle'){f.buf={type,int,t:S.t};return 2}
   const el=f.el;
   if(type!=='focus'){let i=int;while(i>0&&costOf(f,type,i,el)>f.energy)i--;if(i<1)return 0;int=i}
-  f.energy-=costOf(f,type,int,el);
+  f.energy-=costOf(f,type,int,el);f.cStreak=type==='counter'?(f.cStreak||0)+1:0;
   const pts=f.build[el];
   if(f.lastEl===el&&S.turn-f.lastT<=1)f.streak=Math.min(3,f.streak+1);else f.streak=0;
   f.lastEl=el;f.lastT=S.turn;
@@ -341,15 +341,17 @@ function hit(S,att,def,cast,kind,defState,stress){
   S.ev.push({type:'hit',side:def.side,dmg:d,crit:cast.crit,rel,kind,move:cast.type,el:cast.el,counterhit:committed,x:def.x});
   koCheck(S);
 }
-function parryMelee(S,def,att,stress){
-  const c=def.cur;
+function parryMelee(S,def,att,stress,leak){
+  const c=def.cur,ac=att.cur;
   def.energy=Math.min(MAXEN,def.energy+1);
   const rel=relation(c.el,att.el);
   const d=c.base*TYPE_MULT[rel]*stress;
   if(c.el==='nature'&&sigOn(def,'nature')){att.rootNext=1;att.rootK=tr(def,'nature');S.ev.push({type:'root',side:att.side})}
   att.hp-=d;att.state='stun';att.st=0;att.stT=.7;att.cur=null;att.buf=null;att.x=Math.max(5,Math.min(95,att.x+def.face*4));
   goRec(def,.2);def.strikeT=.25;def.cur=null;
-  S.hitstop=.12;S.ev.push({type:'parry',side:def.side,kind:'melee',dmg:d,x:att.x});koCheck(S);
+  S.hitstop=.12;S.ev.push({type:'parry',side:def.side,kind:'melee',dmg:d,x:att.x});
+  if(leak&&ac){const lk=ac.base*TYPE_MULT[relation(ac.el,def.el)]*stress*leak;def.hp-=lk;S.ev.push({type:'leak',side:def.side,dmg:lk,el:ac.el,x:def.x})}
+  koCheck(S);
 }
 function step(S,dt,rng=Math.random){
   if(S.over)return;
@@ -413,8 +415,8 @@ function step(S,dt,rng=Math.random){
     const o=S.f[1-f.side];
     const c=casts[ci];
     if(pre[o.side]==='counter'){
-      if(c.el==='fire'&&sigOn(f,'fire')){S.ev.push({type:'melt',x:o.x});hit(S,f,o,c,'melee','idle',stress)}
-      else parryMelee(S,o,f,stress);
+      const lk=(c.el==='fire'||c.el==='water')&&sigOn(f,c.el)?.4:0;
+      parryMelee(S,o,f,stress,lk);
       if(f.state==='dash'){goRec(f,MOVES[c.type].rec*.85);f.strikeT=.22;f.cur=null}
       return}
     hit(S,f,o,c,'melee',pre[o.side],stress);
@@ -455,7 +457,10 @@ function step(S,dt,rng=Math.random){
         S.proj.push({owner:t.side,x:t.x+t.face*6,dir:t.face,spd:p.spd*1.3,cast:c,age:0,trail:[],reflected:true});
         t.energy=Math.min(MAXEN,t.energy+1);goRec(t,.25);t.strikeT=.25;t.cur=null;
         S.hitstop=.08;S.ev.push({type:'parry',side:t.side,kind:'proj',x:t.x});
-      }else{if(t.state==='counter')S.ev.push({type:pierce&&p.cast.el==='fire'?'melt':'pierce',x:t.x});hit(S,att,t,p.cast,'proj',t.state==='counter'?'idle':t.state,stress)}
+      }else if(t.state==='counter'){
+        const lk=p.cast.base*TYPE_MULT[relation(p.cast.el,t.el)]*stress*.4;t.hp-=lk;S.hitstop=.06;
+        S.ev.push({type:'leak',side:t.side,dmg:lk,el:p.cast.el,x:t.x,shot:true});koCheck(S);
+      }else hit(S,att,t,p.cast,'proj',t.state,stress);
     }
   }
   S.walls=S.walls.filter(w=>!w.dead);
@@ -487,7 +492,7 @@ function runTurn(S,moves,rng=Math.random){
   if(!S.over)endTurn(S);
 }
 /* ---------------- enemy brain (simultaneous choice, reads your habits) ---------------- */
-const RESP={rush:['counter'],slam:['rush','bolt'],bolt:['rush','bolt'],counter:['slam','bolt'],focus:['rush','rush','slam']};
+const RESP={rush:['counter'],slam:['counter','rush'],bolt:['counter','rush'],counter:['focus','focus','rush'],focus:['rush','slam']};
 const TYPES=['bolt','rush','slam','counter','focus'];
 const pickW=(items,w,rng)=>{const t=w.reduce((a,b)=>a+b,0);let r=rng()*t;for(let i=0;i<items.length;i++){r-=w[i];if(r<=0)return items[i]}return items[items.length-1]};
 function aiChoose(S,f,prof,rng=Math.random){
@@ -968,7 +973,7 @@ function handleEvents(){
       else if(rel==='res')addText(e.x,'▼ resisted','#9aa3d6',12,-22);
       buzz(e.side===0?[25,20,35]:12);
     }else if(e.type==='parry'){
-      spark(e.x,'#ffd166',18);addText(e.x,'PARRY!','#ffd166',26);flashT=.1;shakeT=.2;buzz(e.side===0?[15,15,15]:10);
+      spark(e.x,'#ffd166',18);addText(e.x,e.kind==='proj'?'↩ REFLECT!':'PARRY!','#ffd166',e.kind==='proj'?22:26);flashT=.1;shakeT=.2;buzz(e.side===0?[15,15,15]:10);
     }else if(e.type==='clash'){spark(e.x,'#ffffff',10);addText(e.x,'CLASH','#fff',16)}
     else if(e.type==='fire'){const f=S.f[e.side];f.recoil=1;shakeT=Math.max(shakeT,.14);flashT=Math.max(flashT,.07);if(f.hand){const hx=f.hand[0],hy=f.hand[1];FXS.push({x:hx,y:hy,ring:true,l:.4,m:.4,c:EL[e.el].color,r:8});for(let i=0;i<16;i++)fxp(hx,hy,f.face*rnd(80,300),rnd(-90,90),.5,EL[e.el].color,rnd(2,5))}buzz(e.side===0?[10,10,25]:8)}
     else if(e.type==='wall'){spark(e.x,'#c2a77d',14,'🪨');addText(e.x,'🧱 WALL','#e0c79a',20);shakeT=Math.max(shakeT,.18);buzz(15)}
@@ -976,6 +981,7 @@ function handleEvents(){
     else if(e.type==='wallbreak'){spark(e.x,e.melt?'#ff7043':'#c2a77d',e.melt?20:22,e.melt?'🔥':'🪨');addText(e.x,e.melt?'🫠 MELT!':'💥 BREAK','#ffd166',20);flashT=.08;shakeT=.2}
     else if(e.type==='pierce'){spark(e.x,'#42a5f5',10,'💧');addText(e.x,'🔱 PIERCE','#7cc4ff',16)}
     else if(e.type==='melt'){spark(e.x,'#ff7043',14,'🔥');addText(e.x,'🫠 MELT!','#ff9a70',18)}
+    else if(e.type==='leak'){const sd=S.f[e.side];sd.flash=.12;spark(e.x,EL[e.el].color,8,EL[e.el].icon);addText(e.x+(e.side===0?-7:7),'-'+Math.round(e.dmg)+' leak','#ffb0ba',15,-8);buzz(e.side===0?20:8)}
     else if(e.type==='fly'){const f=S.f[e.side];addText(f.x,'🕊️','#fff',20,-10)}
     else if(e.type==='root'){const f=S.f[e.side];spark(f.x,'#66bb6a',12,'🌿');addText(f.x,'🌱 ROOTED','#8fe08f',15,-34)}
     else if(e.type==='cast'){const f=S.f[e.side];if(e.move==='slam')addText(f.x,'⚠','#ff6b7d',22,-10);if(e.side===0)buzz(6)}
@@ -1043,7 +1049,7 @@ function render(dt){
 }
 
 /* ---------- HUD + controls sync ---------- */
-const SIGTXT={fire:'melts 🧱 🛡️',water:'pierces 🧱 🛡️ 🏹',storm:'dash flies over 🧱 🏹',nature:'hit → foe rooted',stone:'🛡️ raises a wall'};
+const SIGTXT={fire:'melts 🧱 · leaks 🛡️',water:'pierces 🧱 · leaks 🛡️',storm:'dash flies over 🧱 🏹',nature:'hit → foe rooted',stone:'🛡️ raises a wall'};
 const effInt=(P,type,el)=>{let i=G.sel.int;while(i>1&&costOf(P,type,i,el)>P.energy)i--;return i};
 function setBar(k,f){
   const bar=$('#hp'+k),w=Math.max(0,Math.round(f.hp));if(hudC['h'+k]===w)return;hudC['h'+k]=w;
@@ -1064,12 +1070,13 @@ function syncCtl(force){
   const P=S.f[0],E=S.f[1],ch=phase==='choose';
   if(ch&&G.plan.type!=='focus'&&costOf(P,G.plan.type,1,P.el)>P.energy)G.plan.type='focus';
   if(ch&&P.root&&P.lastEl&&P.build[P.lastEl]>0)P.el=P.lastEl;
-  const key=[P.el,P.root,S.walls.length,phase,G.plan.type,G.sel.int,Math.floor(P.energy*2),(phase==='exec'||phase==='gap'||phase==='over')?E.el:'-'].join('|');
+  const key=[P.el,P.root,S.walls.length,P.cStreak,phase,G.plan.type,G.sel.int,Math.floor(P.energy*2),(phase==='exec'||phase==='gap'||phase==='over')?E.el:'-'].join('|');
   if(!force&&key===hudC.k)return;hudC.k=key;
   updWheel(P.el,P.build,'el',ch||phase==='intro'?null:E.el);
   if(P.root)document.querySelectorAll('.wheel .nd').forEach(n=>n.classList.toggle('off',n.dataset.e!==P.el));
   const ab=$('#ab'),on=P.build[P.el]>=SIG_MIN;ab.className='ab'+(on?'':' dim');
-  ab.innerHTML=P.root?`🌱 <b>rooted</b> · 🔒 ${EL[P.el].icon} · 🐢⚔️`:`${EL[P.el].icon} ${SIG[P.el].icon} ${SIGTXT[P.el]}${on?'':' · 🔒4✦'}`;
+  const mh=G.plan.type==='counter'?' · 🛡️ ⚔️💥 parry · 🏹 reflect':'';
+  ab.innerHTML=P.root?`🌱 <b>rooted</b> · 🔒 ${EL[P.el].icon} · 🐢⚔️`:`${EL[P.el].icon} ${SIG[P.el].icon} ${SIGTXT[P.el]}${on?'':' · 🔒4✦'}${mh}`;
   const col=EL[P.el].color,th=$('#th'),sl=$('#sl'),pc=(G.sel.int-1)*25;
   sl.style.setProperty('--c',col);th.style.left=pc+'%';th.textContent=G.sel.int;th.style.setProperty('--c',col);th.style.transform=`scale(${.8+.08*G.sel.int})`;
   sl.classList.toggle('off',G.plan.type==='focus');
@@ -1123,10 +1130,10 @@ function showHelp(){
     <b>🏹 ↠</b><span class="g">▲</span><span></span><span>beats 💥 🛡️ 🧘 · trades with ⚔️</span>
     <b>⚔️ →</b><span>beats 🏹 💥 🧘 · <span class="r">▼</span> 🛡️ parries it</span>
     <b>💥 ⤓</b><span>huge, slow. beats 🛡️ 🧘 · <span class="r">▼</span> cut down by 🏹 ⚔️</span>
-    <b>🛡️ ◈</b><span>beats ⚔️ (riposte) · <span class="r">▼</span> 🏹 💥 go through</span>
+    <b>🛡️ ◈</b><span>guards the WHOLE turn: parries ⚔️💥 (+riposte), reflects 🏹. <span class="r">▼</span> 🫠🔱 leak 40% through · 🧘 outlasts it · +1⚡ each turn in a row</span>
     <b>🧘 ◌</b><span>skip & recharge +3⚡ · <span class="r">▼</span> exposed to everything</span>
-    <b>🔥🫠</b><span>Melt — burns through 🧱 walls &amp; 🛡️ guards. burn</span>
-    <b>💧🔱</b><span>Pierce — passes 🧱 🛡️ and other shots, can't be reflected. drench</span>
+    <b>🔥🫠</b><span>Melt — burns through 🧱 walls, leaks 40% past 🛡️. burn</span>
+    <b>💧🔱</b><span>Pierce — passes 🧱 &amp; other shots, leaks 40% past 🛡️. drench</span>
     <b>⚡🕊️</b><span>Fly — ⚔️💥 dashes go over 🧱 and 🏹. fast</span>
     <b>🌿🌱</b><span>Root — hit locks their element next turn &amp; slows their dash. leech</span>
     <b>🪨🧱</b><span>Wall — 🛡️ raises a wall for 2 turns: blocks 🏹⚔️💥. tough</span>
